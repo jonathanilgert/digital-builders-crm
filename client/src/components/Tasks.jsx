@@ -12,20 +12,31 @@ const DOT_COLOR = {
   done: '#16a34a',
 };
 
+const HUBERT_DOT = '#7e57c2';
+
 const api = (path, opts) => fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState({ assignee: 'all', status: 'all' });
 
-  useEffect(() => { loadTasks(); }, []);
+  useEffect(() => { loadTasks(); loadActivities(); }, []);
 
   async function loadTasks() {
     const res = await api('/tasks');
     const data = await res.json();
     setTasks(data);
+  }
+
+  async function loadActivities() {
+    try {
+      const res = await api('/activities?limit=100');
+      const data = await res.json();
+      setActivities(Array.isArray(data) ? data : []);
+    } catch { setActivities([]); }
   }
 
   async function saveTask(data) {
@@ -95,7 +106,7 @@ export default function Tasks() {
       </div>
 
       {/* Kanban */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
         {STATUSES.map(s => (
           <Column
             key={s}
@@ -106,6 +117,7 @@ export default function Tasks() {
             onStatusChange={updateStatus}
           />
         ))}
+        <HubertColumn activities={activities} />
       </div>
 
       {showModal && (
@@ -115,6 +127,98 @@ export default function Tasks() {
           onClose={() => { setShowModal(false); setEditing(null); }}
         />
       )}
+    </div>
+  );
+}
+
+function HubertColumn({ activities }) {
+  return (
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{
+        padding: '14px 16px 12px',
+        borderBottom: '1.5px solid var(--border-light)',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: HUBERT_DOT, flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+          Hubert
+        </span>
+        <span style={{
+          fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)',
+          letterSpacing: '0.02em',
+        }}>
+          automated
+        </span>
+        <span style={{
+          marginLeft: 'auto',
+          background: 'var(--surface2)',
+          border: '1.5px solid var(--border)',
+          borderRadius: 20, padding: '1px 8px',
+          fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+        }}>{activities.length}</span>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        {activities.length === 0 ? (
+          <div style={{
+            textAlign: 'center', color: 'var(--text-muted)',
+            fontSize: 12, padding: '28px 14px', lineHeight: 1.55, opacity: 0.85,
+          }}>
+            No automated work logged yet. Hubert will post completed runs here as they happen.
+          </div>
+        ) : (
+          activities.map(a => <ActivityCard key={a.id} activity={a} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ActivityCard({ activity: a }) {
+  const [hovered, setHovered] = useState(false);
+  const ts = new Date(a.completed_at || a.created_at);
+  const isFailed = a.status === 'failed';
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={a.description || ''}
+      style={{
+        background: hovered ? 'var(--surface2)' : 'var(--surface)',
+        border: `1px solid ${isFailed ? '#f5cdd1' : 'var(--border)'}`,
+        borderLeft: `3px solid ${isFailed ? '#e5484d' : HUBERT_DOT}`,
+        borderRadius: 8,
+        padding: '8px 10px',
+        marginBottom: 5,
+        transition: 'background 0.12s, border-color 0.12s',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+        {a.project_name && (
+          <span style={{
+            fontSize: 10.5, fontWeight: 600, color: HUBERT_DOT,
+            background: '#f1ecf8', borderRadius: 4, padding: '1px 6px',
+          }}>{a.project_name}</span>
+        )}
+        {isFailed && (
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, color: '#e5484d',
+            background: '#fce8ea', borderRadius: 4, padding: '1px 5px',
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}>failed</span>
+        )}
+        <span style={{
+          marginLeft: 'auto', fontSize: 10.5, color: 'var(--text-muted)',
+          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        }}>
+          {ts.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </span>
+      </div>
+      <div style={{
+        fontSize: 12.5, fontWeight: 500, color: 'var(--text)',
+        lineHeight: 1.4, wordBreak: 'break-word',
+      }}>{a.title}</div>
     </div>
   );
 }
