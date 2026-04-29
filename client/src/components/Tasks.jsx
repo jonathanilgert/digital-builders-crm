@@ -14,7 +14,7 @@ const DOT_COLOR = {
 
 const HUBERT_DOT = '#7e57c2';
 
-const api = (path, opts) => fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
+const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const api = (path, opts) => fetch(`/api${path}`, {
+const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, {
   headers: { 'Content-Type': 'application/json' }, ...opts,
 });
 
