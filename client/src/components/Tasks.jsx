@@ -23,7 +23,12 @@ export default function Tasks() {
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState({ assignee: 'all', status: 'all' });
 
-  useEffect(() => { loadTasks(); loadActivities(); }, []);
+  useEffect(() => {
+    loadTasks();
+    loadActivities();
+    const interval = setInterval(loadActivities, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function loadTasks() {
     const res = await api('/tasks');
