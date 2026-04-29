@@ -8,7 +8,7 @@ const SCHEMA = { tasks: [], events: [], work_hours: [], projects: [] };
 const SEED_PROJECTS = [
   { id: 1, created_at: new Date().toISOString(), name: 'DirtLink',          dot: '#7e57c2', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
   { id: 2, created_at: new Date().toISOString(), name: 'Realtors Platform',  dot: '#2f9e6e', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
-  { id: 3, created_at: new Date().toISOString(), name: 'Peneed',             dot: '#d68a23', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
+  { id: 3, created_at: new Date().toISOString(), name: 'Penned',             dot: '#d68a23', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
   { id: 4, created_at: new Date().toISOString(), name: 'Digital Builders',   dot: '#3b7ff5', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
   { id: 5, created_at: new Date().toISOString(), name: 'Other',              dot: '#9ca3af', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
 ];
@@ -21,6 +21,12 @@ function load() {
   }
   const raw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   if (!raw.projects) raw.projects = SEED_PROJECTS;
+
+  let dirty = false;
+  (raw.projects || []).forEach(p => { if (p.name === 'Peneed') { p.name = 'Penned'; dirty = true; } });
+  (raw.tasks    || []).forEach(t => { if (t.project === 'Peneed') { t.project = 'Penned'; dirty = true; } });
+  if (dirty) fs.writeFileSync(DB_FILE, JSON.stringify(raw, null, 2));
+
   return {
     ...raw,
     _counters: {
