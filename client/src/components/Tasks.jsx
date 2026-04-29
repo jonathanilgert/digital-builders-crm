@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const TEAM = ['Alex', 'Partner'];
+const TEAM = ['Alex', 'Jonathan', 'Hubert'];
 const STATUSES = ['todo', 'in-progress', 'done'];
 const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done' };
 const PRIORITIES = ['low', 'medium', 'high'];
