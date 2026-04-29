@@ -3,7 +3,7 @@ const path = require('path');
 
 const DB_FILE = path.join(__dirname, 'data.json');
 
-const SCHEMA = { tasks: [], events: [], work_hours: [], projects: [] };
+const SCHEMA = { tasks: [], events: [], work_hours: [], projects: [], activities: [] };
 
 const SEED_PROJECTS = [
   { id: 1, created_at: new Date().toISOString(), name: 'DirtLink',          dot: '#7e57c2', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
@@ -17,10 +17,11 @@ function load() {
   if (!fs.existsSync(DB_FILE)) {
     const seed = { ...SCHEMA, projects: SEED_PROJECTS };
     fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2));
-    return { ...seed, _counters: { tasks: 0, events: 0, work_hours: 0, projects: SEED_PROJECTS.length } };
+    return { ...seed, _counters: { tasks: 0, events: 0, work_hours: 0, projects: SEED_PROJECTS.length, activities: 0 } };
   }
   const raw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  if (!raw.projects) raw.projects = SEED_PROJECTS;
+  if (!raw.projects)   raw.projects   = SEED_PROJECTS;
+  if (!raw.activities) raw.activities = [];
 
   let dirty = false;
   (raw.projects   || []).forEach(p => { if (p.name === 'Peneed')      { p.name = 'Penned';        dirty = true; } });
@@ -36,6 +37,7 @@ function load() {
       events:     raw.events.length     ? Math.max(...raw.events.map(r => r.id))     : 0,
       work_hours: raw.work_hours.length ? Math.max(...raw.work_hours.map(r => r.id)) : 0,
       projects:   raw.projects.length   ? Math.max(...raw.projects.map(r => r.id))   : 0,
+      activities: raw.activities.length ? Math.max(...raw.activities.map(r => r.id)) : 0,
     },
   };
 }
@@ -73,8 +75,9 @@ const db = {
   delete(table, id) {
     const before = state[table].length;
     state[table] = state[table].filter(r => r.id !== Number(id));
-    if (state[table].length !== before) save(state);
-    return state[table].length !== before || true;
+    const removed = state[table].length !== before;
+    if (removed) save(state);
+    return removed;
   },
 
   find(table, predicate) {
