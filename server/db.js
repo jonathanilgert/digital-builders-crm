@@ -23,8 +23,10 @@ function load() {
   if (!raw.projects) raw.projects = SEED_PROJECTS;
 
   let dirty = false;
-  (raw.projects || []).forEach(p => { if (p.name === 'Peneed') { p.name = 'Penned'; dirty = true; } });
-  (raw.tasks    || []).forEach(t => { if (t.project === 'Peneed') { t.project = 'Penned'; dirty = true; } });
+  (raw.projects   || []).forEach(p => { if (p.name === 'Peneed')      { p.name = 'Penned';        dirty = true; } });
+  (raw.tasks      || []).forEach(t => { if (t.project === 'Peneed')   { t.project = 'Penned';     dirty = true; } });
+  (raw.tasks      || []).forEach(t => { if (t.assignee === 'Partner') { t.assignee = 'Jonathan';  dirty = true; } });
+  (raw.work_hours || []).forEach(w => { if (w.user_name === 'Partner'){ w.user_name = 'Jonathan'; dirty = true; } });
   if (dirty) fs.writeFileSync(DB_FILE, JSON.stringify(raw, null, 2));
 
   return {

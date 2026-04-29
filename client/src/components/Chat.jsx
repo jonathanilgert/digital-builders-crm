@@ -70,9 +70,9 @@ export default function Chat() {
               background: '#dde8fb', color: '#1f4ea1',
               display: 'grid', placeItems: 'center',
               fontSize: 12, fontWeight: 700,
-            }}>P</div>
+            }}>J</div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Partner</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Jonathan</div>
               <div style={{ fontSize: 11, color: T.mute, fontWeight: 500 }}>Online</div>
             </div>
           </div>

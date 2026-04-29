@@ -223,7 +223,7 @@ function IdeasWidget() {
 const INITIAL_MSGS = [
   { id: 'c1', mine: false, text: 'Pushed the staging branch — auth callback still flaky on Safari, can you take a look?' },
   { id: 'c2', mine: true,  text: 'On it. Also: invoice 2026-041 is queued for tonight.' },
-  { id: 'c3', mine: false, text: 'Peneed wants to push the QBR to Thursday — moved it on the calendar 👍' },
+  { id: 'c3', mine: false, text: 'Penned wants to push the QBR to Thursday — moved it on the calendar 👍' },
 ];
 
 function ChatWidget() {
@@ -251,9 +251,9 @@ function ChatWidget() {
             background: '#dde8fb', color: '#1f4ea1',
             display: 'grid', placeItems: 'center',
             fontSize: 10, fontWeight: 700,
-          }}>P</div>
+          }}>J</div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, lineHeight: 1.2 }}>Partner</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, lineHeight: 1.2 }}>Jonathan</div>
             <div style={{ fontSize: 10.5, color: T.mute }}>Chat</div>
           </div>
         </div>
