@@ -324,95 +324,96 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange }) {
   );
 }
 
-function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChange, isMobile }) {
+function StatusCircle({ status, onClick }) {
+  const ringColor = status === 'done' ? 'var(--success)' : status === 'in-progress' ? 'var(--accent)' : 'var(--text-muted)';
+  const title = status === 'todo' ? 'Start' : status === 'in-progress' ? 'Complete' : 'Reopen';
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        width: 14, height: 14, borderRadius: '50%',
+        border: `1.5px solid ${ringColor}`,
+        background: status === 'done' ? 'var(--success)' : 'transparent',
+        marginTop: 3, flexShrink: 0,
+        padding: 0, display: 'grid', placeItems: 'center',
+      }}
+    >
+      {status === 'in-progress' && (
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
+      )}
+      {status === 'done' && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile }) {
   const [hovered, setHovered] = useState(false);
+  const isDone = task.status === 'done';
+  const showActions = isMobile || hovered;
 
   return (
     <div
+      onClick={() => onEdit(task)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
-        border: `1.5px solid ${task.status === 'done' ? '#a8d5b5' : 'var(--border)'}`,
-        borderRadius: 10,
-        padding: isMobile ? '13px 14px' : '11px 12px',
-        marginBottom: isMobile ? 10 : 7,
-        cursor: 'default',
-        transition: 'border-color 0.15s, box-shadow 0.15s',
-        boxShadow: hovered ? 'var(--shadow-sm)' : 'var(--shadow-xs)',
+        border: `1px solid ${isDone ? '#cfe7d6' : 'var(--border)'}`,
+        borderRadius: 8,
+        padding: isMobile ? '10px 12px' : '8px 10px',
+        marginBottom: isMobile ? 7 : 5,
+        cursor: 'pointer',
+        transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s',
+        boxShadow: hovered ? 'var(--shadow-sm)' : 'none',
       }}
     >
-      {/* Title row + action buttons */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-        <div style={{ fontWeight: 500, fontSize: isMobile ? 14 : 13, lineHeight: 1.4, color: 'var(--text)', flex: 1 }}>
-          {task.title}
-        </div>
-        <div style={{
-          display: 'flex', gap: 4, flexShrink: 0,
-          opacity: isMobile ? 1 : (hovered ? 1 : 0),
-          transition: 'opacity 0.15s',
-        }}>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => onEdit(task)}
-            style={{ color: 'var(--text-muted)', padding: '4px 6px' }}
-            title="Edit"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 10.5L5 11.5L12 4.5L10 2.5L2 10.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => onDelete(task.id)}
-            style={{ padding: '4px 6px' }}
-            title="Delete"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </button>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+        <StatusCircle
+          status={task.status}
+          onClick={e => { e.stopPropagation(); onStatusChange(task, nextStatus); }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <div style={{
+              flex: 1, minWidth: 0,
+              fontWeight: 500, fontSize: isMobile ? 13.5 : 13, lineHeight: 1.35,
+              color: isDone ? 'var(--text-muted)' : 'var(--text)',
+              textDecoration: isDone ? 'line-through' : 'none',
+              wordBreak: 'break-word',
+            }}>{task.title}</div>
+            <button
+              className="btn btn-danger btn-sm"
+              onClick={e => { e.stopPropagation(); onDelete(task.id); }}
+              title="Delete"
+              style={{ padding: '2px 5px', opacity: showActions ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0 }}
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
+            {task.project && (
+              <span style={{
+                fontWeight: 600, color: 'var(--accent)',
+                background: 'var(--accent-light)', borderRadius: 4,
+                padding: '1px 6px', fontSize: 10.5,
+              }}>{task.project}</span>
+            )}
+            <span className={`badge badge-${task.priority}`} style={{ padding: '0px 6px', fontSize: 10 }}>{task.priority}</span>
+            <span style={{ fontWeight: 500 }}>{task.assignee}</span>
+            {task.due_date && (
+              <span style={{ marginLeft: 'auto' }}>
+                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-
-      {task.description && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>{task.description}</p>
-      )}
-
-      {task.project && (
-        <div style={{ marginBottom: 7 }}>
-          <span style={{
-            fontSize: 11, fontWeight: 600, color: 'var(--accent)',
-            background: 'var(--accent-light)', borderRadius: 5, padding: '2px 7px',
-          }}>{task.project}</span>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span className={`badge badge-${task.priority}`}>{task.priority}</span>
-        <span style={{
-          fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface2)',
-          border: '1px solid var(--border)', borderRadius: 20, padding: '1px 7px', fontWeight: 500,
-        }}>{task.assignee}</span>
-        {task.due_date && (
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-            {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </span>
-        )}
-      </div>
-
-      <button
-        className="btn btn-outline btn-sm"
-        style={{
-          width: '100%', justifyContent: 'center',
-          fontSize: isMobile ? 12 : 11.5,
-          padding: isMobile ? '8px' : undefined,
-          color: 'var(--accent)', borderColor: 'var(--accent)', background: 'var(--accent-light)',
-        }}
-        onClick={() => onStatusChange(task, nextStatus)}
-      >
-        {nextLabel} →
-      </button>
     </div>
   );
 }
