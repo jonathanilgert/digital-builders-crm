@@ -1,15 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 
-const TEAM     = ['Alex', 'Jonathan', 'Hubert'];
+const TEAM     = ['Unassigned', 'Alex', 'Jonathan', 'Hubert'];
 const STATUSES = ['todo', 'in-progress', 'done'];
 const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done' };
 const PRIORITIES = ['low', 'medium', 'high'];
-const PROJECTS   = ['DirtLink', 'Realtors Platform', 'Penned', 'Digital Builders', 'Other'];
+
+// Project sort + dropdown order: DirtLink and Penned float to the top.
+const PROJECTS = ['DirtLink', 'Penned', 'Realtors Platform', 'Digital Builders', 'Other'];
+const PROJECT_ORDER  = Object.fromEntries(PROJECTS.map((p, i) => [p, i]));
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+// Project palette — used as a 3px left border on each card.
+// Same hex as server seed (db.js) so the colors are stable end-to-end.
+const PROJECT_COLOR = {
+  'DirtLink':          '#7e57c2',
+  'Penned':            '#d68a23',
+  'Realtors Platform': '#2f9e6e',
+  'Digital Builders':  '#3b7ff5',
+  'Other':             '#9ca3af',
+};
+
+// Assignee palette — picks hues that don't collide with priority badges
+// (low=green, medium=amber, high=red) or with project borders.
+const ASSIGNEE_COLOR = {
+  Alex:       '#ec4899', // pink
+  Jonathan:   '#06b6d4', // cyan
+  Hubert:     '#7c3aed', // violet (matches Hubert column branding)
+  Unassigned: '#94a3b8', // slate
+};
 
 const DOT_COLOR = { todo: '#9ca3af', 'in-progress': '#3b7ff5', done: '#16a34a' };
 
 const HUBERT_DOT = '#7e57c2';
+
+// Sort: project order (DirtLink first), then priority desc, then id for stability.
+function sortTasks(tasks) {
+  return [...tasks].sort((a, b) => {
+    const pa = a.project in PROJECT_ORDER ? PROJECT_ORDER[a.project] : PROJECTS.length;
+    const pb = b.project in PROJECT_ORDER ? PROJECT_ORDER[b.project] : PROJECTS.length;
+    if (pa !== pb) return pa - pb;
+    const ra = PRIORITY_ORDER[a.priority] ?? 1;
+    const rb = PRIORITY_ORDER[b.priority] ?? 1;
+    if (ra !== rb) return ra - rb;
+    return a.id - b.id;
+  });
+}
 
 const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
@@ -69,7 +105,7 @@ export default function Tasks() {
   );
 
   const byStatus = STATUSES.reduce((acc, s) => {
-    acc[s] = filtered.filter(t => t.status === s);
+    acc[s] = sortTasks(filtered.filter(t => t.status === s));
     return acc;
   }, {});
 
@@ -358,7 +394,8 @@ function StatusCircle({ status, onClick }) {
 function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile }) {
   const [hovered, setHovered] = useState(false);
   const isDone = task.status === 'done';
-  const showActions = isMobile || hovered;
+  const projectColor  = PROJECT_COLOR[task.project] || 'var(--border)';
+  const assigneeColor = ASSIGNEE_COLOR[task.assignee] || ASSIGNEE_COLOR.Unassigned;
 
   return (
     <div
@@ -368,6 +405,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
         border: `1px solid ${isDone ? '#cfe7d6' : 'var(--border)'}`,
+        borderLeft: `3px solid ${projectColor}`,
         borderRadius: 8,
         padding: isMobile ? '10px 12px' : '8px 10px',
         marginBottom: isMobile ? 7 : 5,
@@ -391,25 +429,36 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
               wordBreak: 'break-word',
             }}>{task.title}</div>
             <button
-              className="btn btn-danger btn-sm"
               onClick={e => { e.stopPropagation(); onDelete(task.id); }}
               title="Delete"
-              style={{ padding: '2px 5px', opacity: showActions ? 1 : 0, transition: 'opacity 0.12s', flexShrink: 0 }}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                padding: 2, lineHeight: 0, flexShrink: 0,
+                color: hovered ? '#e5484d' : 'var(--text-muted)',
+                opacity: hovered ? 1 : 0.45,
+                transition: 'opacity 0.12s, color 0.12s',
+              }}
             >
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
             </button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
             {task.project && (
               <span style={{
-                fontWeight: 600, color: 'var(--accent)',
-                background: 'var(--accent-light)', borderRadius: 4,
-                padding: '1px 6px', fontSize: 10.5,
+                fontWeight: 600, color: projectColor,
+                background: projectColor + '1a',
+                borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
               }}>{task.project}</span>
             )}
             <span className={`badge badge-${task.priority}`} style={{ padding: '0px 6px', fontSize: 10 }}>{task.priority}</span>
-            <span style={{ fontWeight: 500 }}>{task.assignee}</span>
+            <span style={{
+              fontWeight: 600, color: assigneeColor,
+              background: assigneeColor + '1a',
+              borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
+            }}>{task.assignee}</span>
             {task.due_date && (
               <span style={{ marginLeft: 'auto' }}>
                 {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -426,7 +475,7 @@ function TaskModal({ task, onSave, onClose }) {
   const [form, setForm] = useState({
     title:       task?.title       || '',
     description: task?.description || '',
-    assignee:    task?.assignee    || 'Alex',
+    assignee:    task?.assignee    || 'Unassigned',
     status:      task?.status      || 'todo',
     priority:    task?.priority    || 'medium',
     due_date:    task?.due_date    || '',
