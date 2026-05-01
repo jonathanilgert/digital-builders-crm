@@ -100,6 +100,11 @@ export default function Tasks() {
     loadTasks();
   }
 
+  async function deleteActivity(id) {
+    await api(`/activities/${id}`, { method: 'DELETE' });
+    loadActivities();
+  }
+
   async function updateStatus(task, status) {
     await api(`/tasks/${task.id}`, { method: 'PUT', body: JSON.stringify({ ...task, status }) });
     loadTasks();
@@ -199,7 +204,7 @@ export default function Tasks() {
           {/* Scrollable list */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {mobileTab === 'hubert' ? (
-              <HubertColumn activities={activities} />
+              <HubertColumn activities={activities} onDelete={deleteActivity} />
             ) : (
               <>
                 {byStatus[mobileTab].length === 0 && (
@@ -227,7 +232,7 @@ export default function Tasks() {
             <Column key={s} status={s} tasks={byStatus[s]} projectColorByName={projectColorByName}
               onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
           ))}
-          <HubertColumn activities={activities} />
+          <HubertColumn activities={activities} onDelete={deleteActivity} />
         </div>
       )}
 
@@ -239,7 +244,7 @@ export default function Tasks() {
   );
 }
 
-function HubertColumn({ activities, flat }) {
+function HubertColumn({ activities, onDelete, flat }) {
   const content = (
     <>
       {activities.length === 0 ? (
@@ -250,7 +255,7 @@ function HubertColumn({ activities, flat }) {
           No automated work logged yet. Hubert will post completed runs here as they happen.
         </div>
       ) : (
-        activities.map(a => <ActivityCard key={a.id} activity={a} />)
+        activities.map(a => <ActivityCard key={a.id} activity={a} onDelete={onDelete} />)
       )}
     </>
   );
@@ -285,7 +290,7 @@ function HubertColumn({ activities, flat }) {
   );
 }
 
-function ActivityCard({ activity: a }) {
+function ActivityCard({ activity: a, onDelete }) {
   const [hovered, setHovered] = useState(false);
   const ts = new Date(a.completed_at || a.created_at);
   const isFailed = a.status === 'failed';
@@ -324,6 +329,23 @@ function ActivityCard({ activity: a }) {
         }}>
           {ts.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
         </span>
+        {onDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(a.id); }}
+            title="Delete"
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              padding: 2, lineHeight: 0, flexShrink: 0,
+              color: hovered ? '#e5484d' : 'var(--text-muted)',
+              opacity: hovered ? 1 : 0.45,
+              transition: 'opacity 0.12s, color 0.12s',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
       </div>
       <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
         {a.title}

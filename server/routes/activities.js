@@ -27,4 +27,10 @@ router.get('/', (req, res) => {
   res.json(rows.slice(0, max).map(a => decorate(a, projectsById)));
 });
 
+router.delete('/:id', (req, res) => {
+  const ok = db.delete('activities', req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Not found' });
+  res.json({ success: true });
+});
+
 module.exports = router;
