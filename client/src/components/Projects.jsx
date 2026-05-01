@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import useIsMobile from '../hooks/useIsMobile';
 
 const api = (path, opts) => fetch(`/api${path}`, {
   headers: { 'Content-Type': 'application/json' }, ...opts,
@@ -36,7 +37,7 @@ function Card({ children, style, padding = 20, onClick }) {
 
 function Field({ label, children }) {
   return (
-    <div style={{ marginBottom: 18 }}>
+    <div style={{ marginBottom: 16 }}>
       <div style={{
         fontSize: 10.5, fontWeight: 600, color: T.mute,
         letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6,
@@ -50,24 +51,20 @@ const inputStyle = {
   width: '100%', padding: '8px 11px', borderRadius: 8,
   border: `1px solid ${T.line}`, background: T.bg,
   fontFamily: 'inherit', fontSize: 13.5, color: T.ink,
-  outline: 'none', boxSizing: 'border-box',
-  transition: 'border-color .15s',
+  outline: 'none', boxSizing: 'border-box', transition: 'border-color .15s',
 };
 
 const textareaStyle = {
-  ...inputStyle,
-  resize: 'vertical', minHeight: 90, lineHeight: 1.55,
+  ...inputStyle, resize: 'vertical', minHeight: 88, lineHeight: 1.55,
 };
 
 /* ── New project modal ── */
 function NewProjectModal({ existingCount, onSave, onClose }) {
   const [name, setName] = useState('');
-
   const submit = () => {
     const v = name.trim();
     if (!v) return;
-    const dot = DOT_PALETTE[existingCount % DOT_PALETTE.length];
-    onSave({ name: v, dot });
+    onSave({ name: v, dot: DOT_PALETTE[existingCount % DOT_PALETTE.length] });
   };
 
   return (
@@ -76,7 +73,7 @@ function NewProjectModal({ existingCount, onSave, onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
     }}>
       <div style={{
-        background: T.card, borderRadius: 14, width: 400,
+        background: T.card, borderRadius: 14, width: 'min(400px, 92vw)',
         border: `1px solid ${T.line}`, boxShadow: T.shadowLg, padding: 24,
       }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 18 }}>New project</div>
@@ -113,6 +110,7 @@ function NewProjectModal({ existingCount, onSave, onClose }) {
 
 /* ── Project detail drawer ── */
 function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
+  const isMobile = useIsMobile();
   const [form, setForm] = useState({
     name:        project.name        || '',
     description: project.description || '',
@@ -131,52 +129,64 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
     setDirty(true);
   };
 
-  const save = () => {
-    onSave(project.id, form);
-    setDirty(false);
-  };
+  const save = () => { onSave(project.id, form); setDirty(false); };
 
   const relatedTasks = tasks.filter(t => t.project === project.name);
-  const doneTasks = relatedTasks.filter(t => t.status === 'done').length;
-  const sm = statusMeta(form.status);
+  const doneTasks    = relatedTasks.filter(t => t.status === 'done').length;
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 150,
-      display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end',
+      display: 'flex',
+      alignItems: isMobile ? 'flex-end' : 'stretch',
+      justifyContent: isMobile ? 'center' : 'flex-end',
     }}>
       {/* Backdrop */}
-      <div onClick={onClose} style={{
-        position: 'absolute', inset: 0, background: 'rgba(15,17,21,0.2)',
-      }} />
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,17,21,0.2)' }} />
 
       {/* Drawer */}
       <div ref={drawerRef} style={{
-        position: 'relative', width: 480, background: T.card,
-        borderLeft: `1px solid ${T.line}`,
-        boxShadow: '-8px 0 40px rgba(0,0,0,0.1)',
+        position: 'relative',
+        width: isMobile ? '100%' : 480,
+        background: T.card,
+        ...(isMobile ? {
+          borderRadius: '18px 18px 0 0',
+          borderTop: `1px solid ${T.line}`,
+          maxHeight: '92dvh',
+          animation: 'slideInUp .22s ease',
+        } : {
+          borderLeft: `1px solid ${T.line}`,
+          boxShadow: '-8px 0 40px rgba(0,0,0,0.1)',
+          animation: 'slideInRight .2s ease',
+        }),
         display: 'flex', flexDirection: 'column',
         overflowY: 'auto',
-        animation: 'slideInRight .2s ease',
       }}>
-        {/* Drawer header */}
+        {/* Drag handle on mobile */}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 99, background: T.faint }} />
+          </div>
+        )}
+
+        {/* Header */}
         <div style={{
-          padding: '20px 24px 16px',
+          padding: '16px 20px 14px',
           borderBottom: `1px solid ${T.lineSoft}`,
           display: 'flex', alignItems: 'center', gap: 12,
           position: 'sticky', top: 0, background: T.card, zIndex: 1,
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
             background: project.dot + '22',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 700, color: project.dot,
+            fontSize: 14, fontWeight: 700, color: project.dot,
           }}>{project.name[0]}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, letterSpacing: '-0.01em' }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, letterSpacing: '-0.01em' }}>
               {project.name}
             </div>
-            <div style={{ fontSize: 11.5, color: T.mute, marginTop: 1 }}>
+            <div style={{ fontSize: 11, color: T.mute, marginTop: 1 }}>
               {relatedTasks.length} task{relatedTasks.length !== 1 ? 's' : ''} · {doneTasks} done
             </div>
           </div>
@@ -197,11 +207,11 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '22px 24px', flex: 1 }}>
+        <div style={{ padding: '18px 20px', flex: 1 }}>
 
           {/* Status */}
           <Field label="Status">
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {STATUS_OPTIONS.map(s => (
                 <button key={s.value} onClick={() => { setForm(f => ({ ...f, status: s.value })); setDirty(true); }} style={{
                   padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
@@ -214,71 +224,54 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
             </div>
           </Field>
 
-          {/* Description */}
           <Field label="Description">
-            <textarea
-              value={form.description} onChange={set('description')}
+            <textarea value={form.description} onChange={set('description')}
               placeholder="What is this project about?"
               style={textareaStyle}
               onFocus={e => e.target.style.borderColor = T.blue}
-              onBlur={e => e.target.style.borderColor = T.line}
-            />
+              onBlur={e => e.target.style.borderColor = T.line} />
           </Field>
 
-          {/* Client + Budget row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
             <Field label="Client">
-              <input value={form.client} onChange={set('client')}
-                placeholder="Client name"
+              <input value={form.client} onChange={set('client')} placeholder="Client name"
                 style={inputStyle}
                 onFocus={e => e.target.style.borderColor = T.blue}
-                onBlur={e => e.target.style.borderColor = T.line}
-              />
+                onBlur={e => e.target.style.borderColor = T.line} />
             </Field>
             <Field label="Budget">
-              <input value={form.budget} onChange={set('budget')}
-                placeholder="e.g. $5,000"
+              <input value={form.budget} onChange={set('budget')} placeholder="e.g. $5,000"
                 style={inputStyle}
                 onFocus={e => e.target.style.borderColor = T.blue}
-                onBlur={e => e.target.style.borderColor = T.line}
-              />
+                onBlur={e => e.target.style.borderColor = T.line} />
             </Field>
           </div>
 
-          {/* Website */}
           <Field label="Website / URL">
-            <input value={form.website} onChange={set('website')}
-              placeholder="https://..."
+            <input value={form.website} onChange={set('website')} placeholder="https://..."
               style={inputStyle}
               onFocus={e => e.target.style.borderColor = T.blue}
-              onBlur={e => e.target.style.borderColor = T.line}
-            />
+              onBlur={e => e.target.style.borderColor = T.line} />
           </Field>
 
-          {/* Drive */}
           <Field label="Google Drive / Dropbox URL">
             <input value={form.drive} onChange={set('drive')}
               placeholder="https://drive.google.com/... or dropbox.com/..."
               style={inputStyle}
               onFocus={e => e.target.style.borderColor = T.blue}
-              onBlur={e => e.target.style.borderColor = T.line}
-            />
+              onBlur={e => e.target.style.borderColor = T.line} />
           </Field>
 
-          {/* Notes */}
           <Field label="Notes">
-            <textarea
-              value={form.notes} onChange={set('notes')}
+            <textarea value={form.notes} onChange={set('notes')}
               placeholder="Any additional notes, links, context…"
-              style={{ ...textareaStyle, minHeight: 120 }}
+              style={{ ...textareaStyle, minHeight: 110 }}
               onFocus={e => e.target.style.borderColor = T.blue}
-              onBlur={e => e.target.style.borderColor = T.line}
-            />
+              onBlur={e => e.target.style.borderColor = T.line} />
           </Field>
 
-          {/* Tasks summary */}
           {relatedTasks.length > 0 && (
-            <div style={{ marginBottom: 18 }}>
+            <div style={{ marginBottom: 16 }}>
               <div style={{
                 fontSize: 10.5, fontWeight: 600, color: T.mute,
                 letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10,
@@ -297,34 +290,28 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
                     <span style={{
                       fontSize: 13, color: t.status === 'done' ? T.mute : T.ink,
                       textDecoration: t.status === 'done' ? 'line-through' : 'none',
-                      flex: 1, minWidth: 0,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{t.title}</span>
-                    <span style={{ fontSize: 11, color: T.mute, flexShrink: 0 }}>
-                      {t.assignee}
-                    </span>
+                    <span style={{ fontSize: 11, color: T.mute, flexShrink: 0 }}>{t.assignee}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Save button */}
           {dirty && (
             <button onClick={save} style={{
               width: '100%', padding: '10px', borderRadius: 8,
               background: T.blue, border: 'none',
-              color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-              marginBottom: 12,
+              color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginBottom: 10,
             }}>Save changes</button>
           )}
 
-          {/* Delete */}
           <button onClick={() => { if (window.confirm(`Delete "${project.name}"?`)) onDelete(project.id); }} style={{
             width: '100%', padding: '8px', borderRadius: 8,
             background: 'transparent', border: `1px solid ${T.line}`,
             color: T.red, fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-            marginTop: dirty ? 0 : 8,
+            marginTop: dirty ? 0 : 6,
           }}>Delete project</button>
         </div>
       </div>
@@ -334,10 +321,11 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
 
 /* ── Main page ── */
 export default function Projects() {
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [showNew, setShowNew] = useState(false);
-  const [selected, setSelected] = useState(null);
+  const [projects, setProjects]   = useState([]);
+  const [tasks, setTasks]         = useState([]);
+  const [showNew, setShowNew]     = useState(false);
+  const [selected, setSelected]   = useState(null);
+  const isMobile = useIsMobile();
 
   const load = () => api('/projects').then(r => r.json()).then(setProjects).catch(() => {});
 
@@ -365,42 +353,43 @@ export default function Projects() {
   };
 
   const projectData = projects.map(p => {
-    const pts = tasks.filter(t => t.project === p.name);
+    const pts  = tasks.filter(t => t.project === p.name);
     const done = pts.filter(t => t.status === 'done').length;
     return { ...p, total: pts.length, open: pts.length - done, done };
   });
 
   const activeCount = projectData.filter(p => p.status === 'active').length;
+  const pad = isMobile ? '14px 14px 0' : '24px 32px 0';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <style>{`@keyframes slideInRight { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+      <style>{`
+        @keyframes slideInRight { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInUp    { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      `}</style>
 
       {/* Header */}
-      <div style={{
-        padding: '24px 32px 0',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-      }}>
+      <div style={{ padding: pad, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: T.ink }}>Projects</h1>
-          <p style={{ fontSize: 13, color: T.mute, marginTop: 4, marginBottom: 0 }}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 19 : 22, fontWeight: 600, letterSpacing: '-0.02em', color: T.ink }}>Projects</h1>
+          <p style={{ fontSize: 12, color: T.mute, marginTop: 3, marginBottom: 0 }}>
             {activeCount} active · {projects.length} total
           </p>
         </div>
         <button onClick={() => setShowNew(true)} style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          padding: '8px 14px', borderRadius: 8,
+          padding: isMobile ? '7px 12px' : '8px 14px', borderRadius: 8,
           background: T.blue, border: `1px solid ${T.blue}`,
-          color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-        }}>+ New Project</button>
+          color: '#fff', fontSize: isMobile ? 12 : 13, fontWeight: 500, cursor: 'pointer',
+        }}>+ {isMobile ? 'New' : 'New Project'}</button>
       </div>
 
       {/* Grid */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 32px 24px' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '12px 14px 20px' : '20px 32px 24px' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 14,
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: isMobile ? 10 : 14,
         }}>
           {projectData.map(p => {
             const sm = statusMeta(p.status);
@@ -410,22 +399,20 @@ export default function Projects() {
                 style={{ cursor: 'pointer', transition: 'box-shadow .15s' }}
                 onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = T.shadow}>
-                <div style={{ padding: '18px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ padding: isMobile ? '14px 16px' : '18px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                     <div style={{
-                      width: 36, height: 36, borderRadius: 9,
+                      width: 34, height: 34, borderRadius: 9,
                       background: p.dot + '22',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, fontWeight: 700, color: p.dot, flexShrink: 0,
+                      fontSize: 13, fontWeight: 700, color: p.dot, flexShrink: 0,
                     }}>{p.name[0]}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: T.ink, letterSpacing: '-0.01em' }}>{p.name}</div>
-                      <div style={{ fontSize: 11.5, color: T.mute, marginTop: 1 }}>
-                        {p.total} task{p.total !== 1 ? 's' : ''}
-                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 13.5, color: T.ink, letterSpacing: '-0.01em' }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: T.mute, marginTop: 1 }}>{p.total} task{p.total !== 1 ? 's' : ''}</div>
                     </div>
                     <span style={{
-                      fontSize: 10.5, fontWeight: 600, padding: '3px 8px',
+                      fontSize: 10, fontWeight: 600, padding: '3px 8px',
                       borderRadius: 20, background: sm.bg, color: sm.color,
                       letterSpacing: '0.02em', flexShrink: 0,
                     }}>{sm.label}</span>
@@ -433,26 +420,25 @@ export default function Projects() {
 
                   {p.description && (
                     <p style={{
-                      fontSize: 12.5, color: T.mid, lineHeight: 1.5, marginBottom: 12,
+                      fontSize: 12, color: T.mid, lineHeight: 1.5, marginBottom: 10,
                       overflow: 'hidden', display: '-webkit-box',
                       WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                     }}>{p.description}</p>
                   )}
 
-                  <div style={{ height: 4, borderRadius: 99, background: T.bg, overflow: 'hidden', marginBottom: 10 }}>
+                  <div style={{ height: 4, borderRadius: 99, background: T.bg, overflow: 'hidden', marginBottom: 8 }}>
                     {p.total > 0 && (
                       <div style={{
                         width: `${(p.done / p.total) * 100}%`,
-                        height: '100%', background: T.success,
-                        borderRadius: 99, transition: 'width .3s',
+                        height: '100%', background: T.success, borderRadius: 99, transition: 'width .3s',
                       }} />
                     )}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: T.mid }}>{p.open} open</span>
-                    {p.budget && <span style={{ fontSize: 12, color: T.blue, fontWeight: 500 }}>{p.budget}</span>}
-                    <span style={{ fontSize: 12, color: T.success, fontWeight: 500 }}>{p.done} done</span>
+                    <span style={{ fontSize: 11.5, color: T.mid }}>{p.open} open</span>
+                    {p.budget && <span style={{ fontSize: 11.5, color: T.blue, fontWeight: 500 }}>{p.budget}</span>}
+                    <span style={{ fontSize: 11.5, color: T.success, fontWeight: 500 }}>{p.done} done</span>
                   </div>
                 </div>
               </Card>
@@ -462,21 +448,12 @@ export default function Projects() {
       </div>
 
       {showNew && (
-        <NewProjectModal
-          existingCount={projects.length}
-          onSave={createProject}
-          onClose={() => setShowNew(false)}
-        />
+        <NewProjectModal existingCount={projects.length} onSave={createProject} onClose={() => setShowNew(false)} />
       )}
 
       {selected && (
-        <ProjectDrawer
-          project={selected}
-          tasks={tasks}
-          onSave={saveProject}
-          onDelete={deleteProject}
-          onClose={() => setSelected(null)}
-        />
+        <ProjectDrawer project={selected} tasks={tasks}
+          onSave={saveProject} onDelete={deleteProject} onClose={() => setSelected(null)} />
       )}
     </div>
   );

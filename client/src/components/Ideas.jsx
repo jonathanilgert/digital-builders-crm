@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import useIsMobile from '../hooks/useIsMobile';
 
 const T = {
   bg: '#fafaf9', card: '#ffffff', ink: '#0f1115', ink2: '#1f2228',
@@ -34,7 +35,7 @@ function SectionLabel({ children }) {
 }
 
 const INITIAL_IDEAS = [
-  { id: 'ip1', title: 'Friday client digest', description: 'Auto-email every Friday with open tasks + next week\'s events. One per client.', at: new Date(Date.now() - 86400000) },
+  { id: 'ip1', title: 'Friday client digest', description: "Auto-email every Friday with open tasks + next week's events. One per client.", at: new Date(Date.now() - 86400000) },
   { id: 'ip2', title: 'Referral kickback', description: 'Past clients get 10% of first invoice for any referral that converts.', at: new Date(Date.now() - 2 * 86400000) },
   { id: 'ip3', title: 'Onboarding deck → Notion template', description: 'Productize the deck as a paid Notion template. Low lift, recurring revenue.', at: new Date(Date.now() - 3 * 86400000) },
 ];
@@ -61,18 +62,13 @@ function IdeaRow({ idea, onRemove }) {
             {idea.description}
           </div>
         )}
-        <div style={{
-          fontSize: 10.5, color: T.mute, fontWeight: 500, marginTop: 6,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{fmt}</div>
+        <div style={{ fontSize: 10.5, color: T.mute, fontWeight: 500, marginTop: 6 }}>{fmt}</div>
       </div>
-      <button
-        onClick={onRemove}
-        style={{
-          padding: 4, background: 'transparent', border: 'none',
-          color: T.mute, cursor: 'pointer', borderRadius: 4,
-          opacity: hover ? 1 : 0, transition: 'opacity .15s', flexShrink: 0,
-        }}>
+      <button onClick={onRemove} style={{
+        padding: 4, background: 'transparent', border: 'none',
+        color: T.mute, cursor: 'pointer', borderRadius: 4,
+        opacity: hover ? 1 : 0, transition: 'opacity .15s', flexShrink: 0,
+      }}>
         <Icon d="M6 6l12 12M18 6L6 18" size={12} stroke={T.mute} sw={2} />
       </button>
     </div>
@@ -80,11 +76,12 @@ function IdeaRow({ idea, onRemove }) {
 }
 
 export default function Ideas() {
-  const [ideas, setIdeas] = useState(INITIAL_IDEAS);
-  const [title, setTitle] = useState('');
+  const [ideas, setIdeas]           = useState(INITIAL_IDEAS);
+  const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
-  const [focused, setFocused] = useState(false);
+  const [focused, setFocused]       = useState(false);
   const titleRef = useRef(null);
+  const isMobile = useIsMobile();
 
   const submit = () => {
     const t = title.trim();
@@ -95,31 +92,31 @@ export default function Ideas() {
     if (titleRef.current) titleRef.current.focus();
   };
 
+  const pad = isMobile ? '14px 14px 0' : '24px 32px 0';
+  const contentPad = isMobile ? '12px 14px 20px' : '20px 32px 24px';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ padding: '24px 32px 0' }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: T.ink }}>Ideas</h1>
+      <div style={{ padding: pad }}>
+        <h1 style={{ margin: 0, fontSize: isMobile ? 19 : 22, fontWeight: 600, letterSpacing: '-0.02em', color: T.ink }}>Ideas</h1>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 32px 24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: contentPad }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Composer */}
           <Card padding={0}>
-            <div style={{ padding: '14px 16px 10px' }}>
+            <div style={{ padding: '12px 14px 8px' }}>
               <SectionLabel>Capture an idea</SectionLabel>
             </div>
-            <div style={{ padding: '0 16px 14px' }}>
+            <div style={{ padding: '0 14px 12px' }}>
               <div style={{
                 display: 'flex', flexDirection: 'column',
-                background: T.bg,
-                border: `1px solid ${focused ? T.blue : T.line}`,
-                borderRadius: 10, padding: 10,
-                transition: 'border-color .15s',
+                background: T.bg, border: `1px solid ${focused ? T.blue : T.line}`,
+                borderRadius: 10, padding: 10, transition: 'border-color .15s',
               }}>
                 <input
-                  ref={titleRef}
-                  value={title}
+                  ref={titleRef} value={title}
                   onChange={e => setTitle(e.target.value)}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
@@ -127,7 +124,7 @@ export default function Ideas() {
                   placeholder="Idea title…"
                   style={{
                     border: 'none', outline: 'none', background: 'transparent',
-                    fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                    fontFamily: 'inherit', fontSize: isMobile ? 15 : 14, fontWeight: 600,
                     color: T.ink, letterSpacing: '-0.01em', padding: '2px 0',
                   }}
                 />
@@ -137,27 +134,24 @@ export default function Ideas() {
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
                   onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
-                  placeholder="Description (optional) — ⌘↵ to save"
+                  placeholder={isMobile ? 'Description (optional)' : 'Description (optional) — ⌘↵ to save'}
                   rows={2}
                   style={{
                     border: 'none', outline: 'none', resize: 'none',
                     background: 'transparent', fontFamily: 'inherit',
                     fontSize: 13, color: T.ink2, lineHeight: 1.5,
-                    padding: '4px 0 2px', minHeight: 36,
+                    padding: '4px 0 2px', minHeight: 34,
                   }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
-                  <button
-                    onClick={submit}
-                    disabled={!title.trim()}
-                    style={{
-                      padding: '5px 12px', borderRadius: 7,
-                      background: title.trim() ? T.blue : 'transparent',
-                      border: title.trim() ? 'none' : `1px solid ${T.line}`,
-                      color: title.trim() ? '#fff' : T.faint,
-                      fontSize: 12, fontWeight: 600,
-                      cursor: title.trim() ? 'pointer' : 'not-allowed',
-                    }}>Save idea</button>
+                  <button onClick={submit} disabled={!title.trim()} style={{
+                    padding: '5px 12px', borderRadius: 7,
+                    background: title.trim() ? T.blue : 'transparent',
+                    border: title.trim() ? 'none' : `1px solid ${T.line}`,
+                    color: title.trim() ? '#fff' : T.faint,
+                    fontSize: 12, fontWeight: 600,
+                    cursor: title.trim() ? 'pointer' : 'not-allowed',
+                  }}>Save idea</button>
                 </div>
               </div>
             </div>
@@ -166,7 +160,7 @@ export default function Ideas() {
           {/* List */}
           <Card padding={0}>
             <div style={{
-              padding: '14px 16px 10px',
+              padding: '12px 14px 8px',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <SectionLabel>All ideas</SectionLabel>
@@ -180,7 +174,7 @@ export default function Ideas() {
               ))}
               {ideas.length === 0 && (
                 <div style={{
-                  padding: '24px 16px', textAlign: 'center',
+                  padding: '22px 16px', textAlign: 'center',
                   fontSize: 12, color: T.mute, borderTop: `1px solid ${T.lineSoft}`,
                 }}>No ideas yet — add one above.</div>
               )}

@@ -1,4 +1,5 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+* { -webkit-tap-highlight-color: transparent; }
 
 :root {
   --bg:           #f4f5f7;
@@ -31,12 +32,27 @@ body {
   font-family: 'Inter', sans-serif;
   background: var(--bg);
   color: var(--text);
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
 }
 
-#root { height: 100vh; display: flex; }
+#root { height: 100dvh; display: flex; }
+
+/* ── Responsive app shell ── */
+.app-sidebar      { display: flex; }
+.app-mobile-bar   { display: none; }
+
+@media (max-width: 899px) {
+  /* hide desktop sidebar, show mobile top bar */
+  .app-sidebar    { display: none !important; }
+  .app-mobile-bar { display: flex !important; }
+
+  /* stack modal form fields */
+  .form-row { grid-template-columns: 1fr; }
+  .modal { padding: 20px 16px; width: min(480px, 96vw); }
+}
 
 button { font-family: inherit; cursor: pointer; border: none; outline: none; transition: all 0.15s ease; }
 input, textarea, select {
