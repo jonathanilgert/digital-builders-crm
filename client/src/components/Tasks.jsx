@@ -245,6 +245,7 @@ function ActivityCard({ activity: a }) {
   const [hovered, setHovered] = useState(false);
   const ts = new Date(a.completed_at || a.created_at);
   const isFailed = a.status === 'failed';
+  const projectColor = a.project_color || HUBERT_DOT;
 
   return (
     <div
@@ -254,7 +255,7 @@ function ActivityCard({ activity: a }) {
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
         border: `1px solid ${isFailed ? '#f5cdd1' : 'var(--border)'}`,
-        borderLeft: `3px solid ${isFailed ? '#e5484d' : HUBERT_DOT}`,
+        borderLeft: `3px solid ${isFailed ? '#e5484d' : projectColor}`,
         borderRadius: 8, padding: '8px 10px', marginBottom: 5,
         transition: 'background 0.12s, border-color 0.12s',
       }}
@@ -262,8 +263,8 @@ function ActivityCard({ activity: a }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
         {a.project_name && (
           <span style={{
-            fontSize: 10.5, fontWeight: 600, color: HUBERT_DOT,
-            background: '#f1ecf8', borderRadius: 4, padding: '1px 6px',
+            fontSize: 10.5, fontWeight: 600, color: projectColor,
+            background: 'var(--surface2)', borderRadius: 4, padding: '1px 6px',
           }}>{a.project_name}</span>
         )}
         {isFailed && (
