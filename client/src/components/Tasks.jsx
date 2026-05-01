@@ -351,6 +351,10 @@ function StatusCircle({ status, onClick }) {
   );
 }
 
+// Density target: ~60px per card. Description is intentionally NOT shown on
+// the board — edit-modal only. A merge in 2026-04 silently reverted this to a
+// taller layout; if you're re-adding a description block, project pill row, or
+// full-width status button here, you're undoing the condense. Don't.
 function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile }) {
   const [hovered, setHovered] = useState(false);
   const isDone = task.status === 'done';
