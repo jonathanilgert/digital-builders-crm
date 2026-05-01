@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { findProject } = require('../lib/projects');
+const { slugify } = require('../lib/slugify');
 
 const ALLOWED_STATUSES = ['done', 'failed', 'in_progress', 'scheduled'];
 const MAX_TITLE = 500;
@@ -214,7 +215,12 @@ router.post('/tasks/:id/complete', (req, res) => {
 });
 
 router.get('/projects', (req, res) => {
-  const rows = db.get('projects').map(p => ({ id: p.id, name: p.name, color: p.dot }));
+  const rows = db.get('projects').map(p => ({
+    id:    p.id,
+    name:  p.name,
+    slug:  slugify(p.name),
+    color: p.dot,
+  }));
   res.json(rows);
 });
 

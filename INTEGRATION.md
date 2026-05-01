@@ -248,8 +248,8 @@ Returns the project list trimmed to what an integration needs:
 
 ```json
 [
-  { "id": 1, "name": "DirtLink", "color": "#7e57c2" },
-  { "id": 3, "name": "Penned",   "color": "#d68a23" }
+  { "id": 1, "name": "DirtLink", "slug": "dirtlink", "color": "#7e57c2" },
+  { "id": 3, "name": "Penned",   "slug": "penned",   "color": "#d68a23" }
 ]
 ```
 
