@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 
-const api = (path, opts) => fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
+const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
 const T = {
   bg: '#fafaf9', card: '#ffffff', ink: '#0f1115', ink2: '#1f2228',

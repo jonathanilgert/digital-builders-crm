@@ -1,29 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 
-const TEAM     = ['Alex', 'Partner'];
+const TEAM     = ['Alex', 'Jonathan', 'Hubert'];
 const STATUSES = ['todo', 'in-progress', 'done'];
 const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done' };
 const PRIORITIES = ['low', 'medium', 'high'];
-const PROJECTS   = ['DirtLink', 'Realtors Platform', 'Peneed', 'Digital Builders', 'Other'];
+const PROJECTS   = ['DirtLink', 'Realtors Platform', 'Penned', 'Digital Builders', 'Other'];
 
 const DOT_COLOR = { todo: '#9ca3af', 'in-progress': '#3b7ff5', done: '#16a34a' };
 
-const api = (path, opts) => fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
+const HUBERT_DOT = '#7e57c2';
+
+const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
 export default function Tasks() {
-  const [tasks, setTasks]       = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing]   = useState(null);
-  const [filter, setFilter]     = useState({ assignee: 'all', status: 'all' });
-  const [mobileTab, setMobileTab] = useState('todo');
+  const [tasks, setTasks]           = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [showModal, setShowModal]   = useState(false);
+  const [editing, setEditing]       = useState(null);
+  const [filter, setFilter]         = useState({ assignee: 'all', status: 'all' });
+  const [mobileTab, setMobileTab]   = useState('todo');
   const isMobile = useIsMobile();
 
-  useEffect(() => { loadTasks(); }, []);
+  useEffect(() => {
+    loadTasks();
+    loadActivities();
+    const interval = setInterval(loadActivities, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function loadTasks() {
     const res = await api('/tasks');
     setTasks(await res.json());
+  }
+
+  async function loadActivities() {
+    try {
+      const res = await api('/activities?limit=100');
+      const data = await res.json();
+      setActivities(Array.isArray(data) ? data : []);
+    } catch { setActivities([]); }
   }
 
   async function saveTask(data) {
@@ -97,7 +113,7 @@ export default function Tasks() {
           )}
           <button className="btn btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}
             onClick={() => { setEditing(null); setShowModal(true); }}>
-            + {isMobile ? 'New Task' : 'New Task'}
+            + New Task
           </button>
         </div>
       </div>
@@ -107,57 +123,67 @@ export default function Tasks() {
         /* Mobile: tab switcher + single scrollable column */
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: 14 }}>
 
-          {/* Tab bar */}
+          {/* Tab bar — 4 tabs including Hubert */}
           <div style={{
             display: 'flex', gap: 0, marginBottom: 10,
             background: 'var(--surface2)', borderRadius: 10, padding: 3, flexShrink: 0,
           }}>
-            {STATUSES.map(s => {
+            {[...STATUSES, 'hubert'].map(s => {
               const active = mobileTab === s;
+              const label = s === 'hubert' ? 'Hubert' : STATUS_LABELS[s];
+              const count = s === 'hubert' ? activities.length : byStatus[s].length;
+              const dotColor = s === 'hubert' ? HUBERT_DOT : DOT_COLOR[s];
               return (
                 <button key={s} onClick={() => setMobileTab(s)} style={{
-                  flex: 1, padding: '8px 4px', borderRadius: 8, border: 'none',
+                  flex: 1, padding: '8px 2px', borderRadius: 8, border: 'none',
                   background: active ? 'var(--surface)' : 'transparent',
                   fontWeight: active ? 600 : 400,
                   color: active ? 'var(--text)' : 'var(--text-muted)',
-                  fontSize: 12, cursor: 'pointer',
+                  fontSize: 11.5, cursor: 'pointer',
                   boxShadow: active ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                   transition: 'all .15s',
                 }}>
-                  {STATUS_LABELS[s]}
+                  {label}
                   <span style={{
-                    display: 'inline-block', marginLeft: 5,
+                    display: 'inline-block', marginLeft: 4,
                     fontSize: 10, fontWeight: 700,
-                    color: active ? DOT_COLOR[s] : 'var(--text-muted)',
-                  }}>{byStatus[s].length}</span>
+                    color: active ? dotColor : 'var(--text-muted)',
+                  }}>{count}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Scrollable task list */}
+          {/* Scrollable list */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {byStatus[mobileTab].length === 0 && (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '36px 0', opacity: 0.7 }}>
-                No tasks
-              </div>
+            {mobileTab === 'hubert' ? (
+              <HubertColumn activities={activities} />
+            ) : (
+              <>
+                {byStatus[mobileTab].length === 0 && (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '36px 0', opacity: 0.7 }}>
+                    No tasks
+                  </div>
+                )}
+                {byStatus[mobileTab].map(t => (
+                  <TaskCard key={t.id} task={t} isMobile
+                    onEdit={openEdit} onDelete={deleteTask}
+                    nextStatus={{ todo: 'in-progress', 'in-progress': 'done', done: 'todo' }[mobileTab]}
+                    nextLabel={{ todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' }[mobileTab]}
+                    onStatusChange={updateStatus}
+                  />
+                ))}
+              </>
             )}
-            {byStatus[mobileTab].map(t => (
-              <TaskCard key={t.id} task={t} isMobile
-                onEdit={openEdit} onDelete={deleteTask}
-                nextStatus={{ todo: 'in-progress', 'in-progress': 'done', done: 'todo' }[mobileTab]}
-                nextLabel={{ todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' }[mobileTab]}
-                onStatusChange={updateStatus}
-              />
-            ))}
           </div>
         </div>
       ) : (
-        /* Desktop: 3-column kanban grid */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
+        /* Desktop: 4-column kanban grid */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
           {STATUSES.map(s => (
             <Column key={s} status={s} tasks={byStatus[s]} onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
           ))}
+          <HubertColumn activities={activities} />
         </div>
       )}
 
@@ -165,6 +191,98 @@ export default function Tasks() {
         <TaskModal task={editing} onSave={saveTask}
           onClose={() => { setShowModal(false); setEditing(null); }} />
       )}
+    </div>
+  );
+}
+
+function HubertColumn({ activities, flat }) {
+  const content = (
+    <>
+      {activities.length === 0 ? (
+        <div style={{
+          textAlign: 'center', color: 'var(--text-muted)',
+          fontSize: 12, padding: '28px 14px', lineHeight: 1.55, opacity: 0.85,
+        }}>
+          No automated work logged yet. Hubert will post completed runs here as they happen.
+        </div>
+      ) : (
+        activities.map(a => <ActivityCard key={a.id} activity={a} />)
+      )}
+    </>
+  );
+
+  if (flat) return <div style={{ padding: '8px' }}>{content}</div>;
+
+  return (
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{
+        padding: '14px 16px 12px',
+        borderBottom: '1.5px solid var(--border-light)',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: HUBERT_DOT, flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+          Hubert
+        </span>
+        <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+          automated
+        </span>
+        <span style={{
+          marginLeft: 'auto',
+          background: 'var(--surface2)', border: '1.5px solid var(--border)',
+          borderRadius: 20, padding: '1px 8px',
+          fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+        }}>{activities.length}</span>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        {content}
+      </div>
+    </div>
+  );
+}
+
+function ActivityCard({ activity: a }) {
+  const [hovered, setHovered] = useState(false);
+  const ts = new Date(a.completed_at || a.created_at);
+  const isFailed = a.status === 'failed';
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={a.description || ''}
+      style={{
+        background: hovered ? 'var(--surface2)' : 'var(--surface)',
+        border: `1px solid ${isFailed ? '#f5cdd1' : 'var(--border)'}`,
+        borderLeft: `3px solid ${isFailed ? '#e5484d' : HUBERT_DOT}`,
+        borderRadius: 8, padding: '8px 10px', marginBottom: 5,
+        transition: 'background 0.12s, border-color 0.12s',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+        {a.project_name && (
+          <span style={{
+            fontSize: 10.5, fontWeight: 600, color: HUBERT_DOT,
+            background: '#f1ecf8', borderRadius: 4, padding: '1px 6px',
+          }}>{a.project_name}</span>
+        )}
+        {isFailed && (
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, color: '#e5484d',
+            background: '#fce8ea', borderRadius: 4, padding: '1px 5px',
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}>failed</span>
+        )}
+        <span style={{
+          marginLeft: 'auto', fontSize: 10.5, color: 'var(--text-muted)',
+          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        }}>
+          {ts.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </span>
+      </div>
+      <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
+        {a.title}
+      </div>
     </div>
   );
 }
@@ -210,6 +328,8 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
 
   return (
     <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
         border: `1.5px solid ${task.status === 'done' ? '#a8d5b5' : 'var(--border)'}`,
@@ -220,15 +340,12 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
         transition: 'border-color 0.15s, box-shadow 0.15s',
         boxShadow: hovered ? 'var(--shadow-sm)' : 'var(--shadow-xs)',
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       {/* Title row + action buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
         <div style={{ fontWeight: 500, fontSize: isMobile ? 14 : 13, lineHeight: 1.4, color: 'var(--text)', flex: 1 }}>
           {task.title}
         </div>
-        {/* Always visible on mobile, hover-only on desktop */}
         <div style={{
           display: 'flex', gap: 4, flexShrink: 0,
           opacity: isMobile ? 1 : (hovered ? 1 : 0),

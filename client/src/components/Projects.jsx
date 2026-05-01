@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 
-const api = (path, opts) => fetch(`/api${path}`, {
+const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, {
   headers: { 'Content-Type': 'application/json' }, ...opts,
 });
 
@@ -104,6 +104,70 @@ function NewProjectModal({ existingCount, onSave, onClose }) {
           }}>Create project</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Activity feed (read-only, populated by integrations) ── */
+function ActivityFeed({ projectId }) {
+  const [items, setItems] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api(`/activities?project_id=${projectId}&limit=20`)
+      .then(r => r.json())
+      .then(data => { if (!cancelled) setItems(data); })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  if (items === null) return null;
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{
+        fontSize: 10.5, fontWeight: 600, color: T.mute,
+        letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10,
+      }}>Activity ({items.length})</div>
+      {items.length === 0 ? (
+        <div style={{
+          fontSize: 12.5, color: T.mute, padding: '12px 14px',
+          background: T.bg, border: `1px dashed ${T.line}`, borderRadius: 8,
+          lineHeight: 1.5,
+        }}>
+          No activity yet. Automated work logged via the integrations API will appear here.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {items.map(a => (
+            <div key={a.id} style={{
+              padding: '10px 12px', borderRadius: 8,
+              background: T.bg, border: `1px solid ${T.lineSoft}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                  background: a.status === 'failed' ? '#fce8ea' : a.status === 'done' ? '#e3f4ec' : T.bg,
+                  color:      a.status === 'failed' ? T.red    : a.status === 'done' ? T.success : T.mid,
+                }}>{a.status || a.type}</span>
+                <span style={{ fontSize: 13, color: T.ink, fontWeight: 500, flex: 1, minWidth: 0 }}>{a.title}</span>
+                <span style={{ fontSize: 11, color: T.mute, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {new Date(a.completed_at || a.created_at).toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              {a.description && (
+                <div style={{ fontSize: 12, color: T.mid, marginTop: 4, lineHeight: 1.5 }}>{a.description}</div>
+              )}
+              {(a.source && a.source !== 'integration') && (
+                <div style={{ fontSize: 10.5, color: T.mute, marginTop: 4 }}>via {a.source}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -270,6 +334,10 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
               onBlur={e => e.target.style.borderColor = T.line} />
           </Field>
 
+          {/* Activity feed */}
+          <ActivityFeed projectId={project.id} />
+
+          {/* Tasks summary */}
           {relatedTasks.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <div style={{
