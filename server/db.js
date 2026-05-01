@@ -6,11 +6,11 @@ const DB_FILE = path.join(__dirname, 'data.json');
 const SCHEMA = { tasks: [], events: [], work_hours: [], projects: [], activities: [] };
 
 const SEED_PROJECTS = [
-  { id: 1, created_at: new Date().toISOString(), name: 'DirtLink',          dot: '#7e57c2', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
-  { id: 2, created_at: new Date().toISOString(), name: 'Realtors Platform',  dot: '#2f9e6e', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
-  { id: 3, created_at: new Date().toISOString(), name: 'Penned',             dot: '#d68a23', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
-  { id: 4, created_at: new Date().toISOString(), name: 'Digital Builders',   dot: '#3b7ff5', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
-  { id: 5, created_at: new Date().toISOString(), name: 'Other',              dot: '#9ca3af', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
+  { id: 1, created_at: new Date().toISOString(), name: 'DirtLink',          dot: '#f97316', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
+  { id: 2, created_at: new Date().toISOString(), name: 'Realtors Platform',  dot: '#3b82f6', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
+  { id: 3, created_at: new Date().toISOString(), name: 'Penned',             dot: '#22c55e', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
+  { id: 4, created_at: new Date().toISOString(), name: 'Digital Builders',   dot: '#a855f7', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
+  { id: 5, created_at: new Date().toISOString(), name: 'Other',              dot: '#64748b', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
 ];
 
 function load() {

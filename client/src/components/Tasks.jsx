@@ -7,19 +7,13 @@ const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done
 const PRIORITIES = ['low', 'medium', 'high'];
 
 // Project sort + dropdown order: DirtLink and Penned float to the top.
+// (Used for the create-task dropdown and as a sort preference for the kanban.)
 const PROJECTS = ['DirtLink', 'Penned', 'Realtors Platform', 'Digital Builders', 'Other'];
 const PROJECT_ORDER  = Object.fromEntries(PROJECTS.map((p, i) => [p, i]));
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 
-// Project palette — used as a 3px left border on each card.
-// Same hex as server seed (db.js) so the colors are stable end-to-end.
-const PROJECT_COLOR = {
-  'DirtLink':          '#7e57c2',
-  'Penned':            '#d68a23',
-  'Realtors Platform': '#2f9e6e',
-  'Digital Builders':  '#3b7ff5',
-  'Other':             '#9ca3af',
-};
+// Project colors come from /api/projects.dot at runtime so new projects
+// pick up their own picked color without a code change. See loadProjects().
 
 // Assignee palette — picks hues that don't collide with priority badges
 // (low=green, medium=amber, high=red) or with project borders.
@@ -52,6 +46,7 @@ const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, { hea
 export default function Tasks() {
   const [tasks, setTasks]           = useState([]);
   const [activities, setActivities] = useState([]);
+  const [projects, setProjects]     = useState([]);
   const [showModal, setShowModal]   = useState(false);
   const [editing, setEditing]       = useState(null);
   const [filter, setFilter]         = useState({ assignee: 'all', status: 'all' });
@@ -61,6 +56,7 @@ export default function Tasks() {
   useEffect(() => {
     loadTasks();
     loadActivities();
+    loadProjects();
     const interval = setInterval(loadActivities, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -77,6 +73,16 @@ export default function Tasks() {
       setActivities(Array.isArray(data) ? data : []);
     } catch { setActivities([]); }
   }
+
+  async function loadProjects() {
+    try {
+      const res = await api('/projects');
+      const data = await res.json();
+      setProjects(Array.isArray(data) ? data : []);
+    } catch { setProjects([]); }
+  }
+
+  const projectColorByName = Object.fromEntries(projects.map(p => [p.name, p.dot]));
 
   async function saveTask(data) {
     if (editing) {
@@ -204,6 +210,7 @@ export default function Tasks() {
                 {byStatus[mobileTab].map(t => (
                   <TaskCard key={t.id} task={t} isMobile
                     onEdit={openEdit} onDelete={deleteTask}
+                    projectColorByName={projectColorByName}
                     nextStatus={{ todo: 'in-progress', 'in-progress': 'done', done: 'todo' }[mobileTab]}
                     nextLabel={{ todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' }[mobileTab]}
                     onStatusChange={updateStatus}
@@ -217,7 +224,8 @@ export default function Tasks() {
         /* Desktop: 4-column kanban grid */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
           {STATUSES.map(s => (
-            <Column key={s} status={s} tasks={byStatus[s]} onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
+            <Column key={s} status={s} tasks={byStatus[s]} projectColorByName={projectColorByName}
+              onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
           ))}
           <HubertColumn activities={activities} />
         </div>
@@ -324,7 +332,7 @@ function ActivityCard({ activity: a }) {
   );
 }
 
-function Column({ status, tasks, onEdit, onDelete, onStatusChange }) {
+function Column({ status, tasks, onEdit, onDelete, onStatusChange, projectColorByName }) {
   const nextStatus = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
   const nextLabel  = { todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' };
 
@@ -353,6 +361,7 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange }) {
         {tasks.map(t => (
           <TaskCard key={t.id} task={t}
             onEdit={onEdit} onDelete={onDelete}
+            projectColorByName={projectColorByName}
             nextStatus={nextStatus[status]} nextLabel={nextLabel[status]} onStatusChange={onStatusChange} />
         ))}
       </div>
@@ -391,11 +400,12 @@ function StatusCircle({ status, onClick }) {
 // the board — edit-modal only. A merge in 2026-04 silently reverted this to a
 // taller layout; if you're re-adding a description block, project pill row, or
 // full-width status button here, you're undoing the condense. Don't.
-function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile }) {
+function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile, projectColorByName }) {
   const [hovered, setHovered] = useState(false);
   const isDone = task.status === 'done';
-  const projectColor  = PROJECT_COLOR[task.project] || 'var(--border)';
+  const projectColor  = (projectColorByName && projectColorByName[task.project]) || 'var(--border)';
   const assigneeColor = ASSIGNEE_COLOR[task.assignee] || ASSIGNEE_COLOR.Unassigned;
+  const hasProject    = !!task.project && projectColorByName && projectColorByName[task.project];
 
   return (
     <div
@@ -404,8 +414,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
       onMouseLeave={() => setHovered(false)}
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
-        border: `1px solid ${isDone ? '#cfe7d6' : 'var(--border)'}`,
-        borderLeft: `3px solid ${projectColor}`,
+        border: `2px solid ${hasProject ? projectColor : 'var(--border)'}`,
         borderRadius: 8,
         padding: isMobile ? '10px 12px' : '8px 10px',
         marginBottom: isMobile ? 7 : 5,
@@ -446,7 +455,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
-            {task.project && (
+            {hasProject && (
               <span style={{
                 fontWeight: 600, color: projectColor,
                 background: projectColor + '1a',
@@ -454,16 +463,17 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
               }}>{task.project}</span>
             )}
             <span className={`badge badge-${task.priority}`} style={{ padding: '0px 6px', fontSize: 10 }}>{task.priority}</span>
+            {task.due_date && (
+              <span>
+                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
             <span style={{
+              marginLeft: 'auto',
               fontWeight: 600, color: assigneeColor,
               background: assigneeColor + '1a',
               borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
             }}>{task.assignee}</span>
-            {task.due_date && (
-              <span style={{ marginLeft: 'auto' }}>
-                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            )}
           </div>
         </div>
       </div>

@@ -14,7 +14,30 @@ const T = {
   shadowLg: '0 8px 40px rgba(0,0,0,0.12)',
 };
 
-const DOT_PALETTE = ['#7e57c2', '#3b7ff5', '#2f9e6e', '#d68a23', '#e25c79', '#5fb3c9', '#94928c'];
+const DOT_PALETTE = ['#f97316', '#22c55e', '#3b82f6', '#a855f7', '#64748b', '#ec4899', '#06b6d4', '#eab308'];
+
+function ColorPicker({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {DOT_PALETTE.map(c => (
+        <button key={c} type="button" onClick={() => onChange(c)} style={{
+          width: 22, height: 22, borderRadius: '50%',
+          background: c, cursor: 'pointer',
+          border: value === c ? '2px solid #0f1115' : '2px solid transparent',
+          padding: 0, transition: 'transform .12s',
+          transform: value === c ? 'scale(1.1)' : 'scale(1)',
+        }} title={c} />
+      ))}
+      <input type="color" value={value || '#9ca3af'} onChange={e => onChange(e.target.value)}
+        style={{
+          width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.line}`,
+          padding: 0, cursor: 'pointer', background: 'transparent',
+        }}
+        title="Custom color"
+      />
+    </div>
+  );
+}
 
 const STATUS_OPTIONS = [
   { value: 'active',    label: 'Active',     color: '#2f9e6e', bg: '#e3f4ec' },
@@ -61,10 +84,11 @@ const textareaStyle = {
 /* ── New project modal ── */
 function NewProjectModal({ existingCount, onSave, onClose }) {
   const [name, setName] = useState('');
+  const [dot, setDot]   = useState(DOT_PALETTE[existingCount % DOT_PALETTE.length]);
   const submit = () => {
     const v = name.trim();
     if (!v) return;
-    onSave({ name: v, dot: DOT_PALETTE[existingCount % DOT_PALETTE.length] });
+    onSave({ name: v, dot });
   };
 
   return (
@@ -87,6 +111,9 @@ function NewProjectModal({ existingCount, onSave, onClose }) {
             onFocus={e => e.target.style.borderColor = T.blue}
             onBlur={e => e.target.style.borderColor = T.line}
           />
+        </Field>
+        <Field label="Color">
+          <ColorPicker value={dot} onChange={setDot} />
         </Field>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
           <button onClick={onClose} style={{
@@ -184,6 +211,7 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
     website:     project.website     || '',
     drive:       project.drive       || '',
     notes:       project.notes       || '',
+    dot:         project.dot         || '#9ca3af',
   });
   const [dirty, setDirty] = useState(false);
   const drawerRef = useRef(null);
@@ -242,9 +270,9 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
         }}>
           <div style={{
             width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            background: project.dot + '22',
+            background: form.dot + '22',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, fontWeight: 700, color: project.dot,
+            fontSize: 14, fontWeight: 700, color: form.dot,
           }}>{project.name[0]}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, letterSpacing: '-0.01em' }}>
@@ -272,6 +300,11 @@ function ProjectDrawer({ project, tasks, onSave, onDelete, onClose }) {
 
         {/* Body */}
         <div style={{ padding: '18px 20px', flex: 1 }}>
+
+          {/* Color */}
+          <Field label="Color">
+            <ColorPicker value={form.dot} onChange={c => { setForm(f => ({ ...f, dot: c })); setDirty(true); }} />
+          </Field>
 
           {/* Status */}
           <Field label="Status">
