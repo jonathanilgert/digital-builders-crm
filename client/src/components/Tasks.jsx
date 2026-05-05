@@ -1,21 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 
-const TEAM     = ['Alex', 'Jonathan', 'Hubert'];
+const TEAM     = ['Unassigned', 'Alex', 'Jonathan', 'Hubert'];
 const STATUSES = ['todo', 'in-progress', 'done'];
 const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done' };
 const PRIORITIES = ['low', 'medium', 'high'];
-const PROJECTS   = ['DirtLink', 'Realtors Platform', 'Penned', 'Digital Builders', 'Other'];
+
+// Project sort + dropdown order: DirtLink and Penned float to the top.
+// (Used for the create-task dropdown and as a sort preference for the kanban.)
+const PROJECTS = ['DirtLink', 'Penned', 'Realtors Platform', 'Digital Builders', 'Other'];
+const PROJECT_ORDER  = Object.fromEntries(PROJECTS.map((p, i) => [p, i]));
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+// Project colors come from /api/projects.dot at runtime so new projects
+// pick up their own picked color without a code change. See loadProjects().
+
+// Assignee palette — picks hues that don't collide with priority badges
+// (low=green, medium=amber, high=red) or with project borders.
+const ASSIGNEE_COLOR = {
+  Alex:       '#ec4899', // pink
+  Jonathan:   '#06b6d4', // cyan
+  Hubert:     '#7c3aed', // violet (matches Hubert column branding)
+  Unassigned: '#94a3b8', // slate
+};
 
 const DOT_COLOR = { todo: '#9ca3af', 'in-progress': '#3b7ff5', done: '#16a34a' };
 
 const HUBERT_DOT = '#7e57c2';
+
+// Sort: project order (DirtLink first), then priority desc, then id for stability.
+function sortTasks(tasks) {
+  return [...tasks].sort((a, b) => {
+    const pa = a.project in PROJECT_ORDER ? PROJECT_ORDER[a.project] : PROJECTS.length;
+    const pb = b.project in PROJECT_ORDER ? PROJECT_ORDER[b.project] : PROJECTS.length;
+    if (pa !== pb) return pa - pb;
+    const ra = PRIORITY_ORDER[a.priority] ?? 1;
+    const rb = PRIORITY_ORDER[b.priority] ?? 1;
+    if (ra !== rb) return ra - rb;
+    return a.id - b.id;
+  });
+}
 
 const api = (path, opts) => fetch(`${import.meta.env.BASE_URL}api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
 export default function Tasks() {
   const [tasks, setTasks]           = useState([]);
   const [activities, setActivities] = useState([]);
+  const [projects, setProjects]     = useState([]);
   const [showModal, setShowModal]   = useState(false);
   const [editing, setEditing]       = useState(null);
   const [filter, setFilter]         = useState({ assignee: 'all', status: 'all' });
@@ -25,6 +56,7 @@ export default function Tasks() {
   useEffect(() => {
     loadTasks();
     loadActivities();
+    loadProjects();
     const interval = setInterval(loadActivities, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -42,6 +74,16 @@ export default function Tasks() {
     } catch { setActivities([]); }
   }
 
+  async function loadProjects() {
+    try {
+      const res = await api('/projects');
+      const data = await res.json();
+      setProjects(Array.isArray(data) ? data : []);
+    } catch { setProjects([]); }
+  }
+
+  const projectColorByName = Object.fromEntries(projects.map(p => [p.name, p.dot]));
+
   async function saveTask(data) {
     if (editing) {
       await api(`/tasks/${editing.id}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -56,6 +98,11 @@ export default function Tasks() {
   async function deleteTask(id) {
     await api(`/tasks/${id}`, { method: 'DELETE' });
     loadTasks();
+  }
+
+  async function deleteActivity(id) {
+    await api(`/activities/${id}`, { method: 'DELETE' });
+    loadActivities();
   }
 
   async function updateStatus(task, status) {
@@ -75,7 +122,7 @@ export default function Tasks() {
   );
 
   const byStatus = STATUSES.reduce((acc, s) => {
-    acc[s] = filtered.filter(t => t.status === s);
+    acc[s] = sortTasks(filtered.filter(t => t.status === s));
     return acc;
   }, {});
 
@@ -163,7 +210,7 @@ export default function Tasks() {
           {/* Scrollable list */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {mobileTab === 'hubert' ? (
-              <HubertColumn activities={activities} />
+              <HubertColumn activities={activities} onDelete={deleteActivity} />
             ) : (
               <>
                 {byStatus[mobileTab].length === 0 && (
@@ -174,6 +221,7 @@ export default function Tasks() {
                 {byStatus[mobileTab].map(t => (
                   <TaskCard key={t.id} task={t} isMobile
                     onEdit={openEdit} onDelete={deleteTask}
+                    projectColorByName={projectColorByName}
                     nextStatus={{ todo: 'in-progress', 'in-progress': 'done', done: 'todo' }[mobileTab]}
                     nextLabel={{ todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' }[mobileTab]}
                     onStatusChange={updateStatus}
@@ -187,9 +235,10 @@ export default function Tasks() {
         /* Desktop: 4-column kanban grid */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
           {STATUSES.map(s => (
-            <Column key={s} status={s} tasks={byStatus[s]} onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} onDrop={handleDrop} />
+            <Column key={s} status={s} tasks={byStatus[s]} projectColorByName={projectColorByName}
+              onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} onDrop={handleDrop} />
           ))}
-          <HubertColumn activities={activities} />
+          <HubertColumn activities={activities} onDelete={deleteActivity} />
         </div>
       )}
 
@@ -201,7 +250,7 @@ export default function Tasks() {
   );
 }
 
-function HubertColumn({ activities, flat }) {
+function HubertColumn({ activities, onDelete, flat }) {
   const content = (
     <>
       {activities.length === 0 ? (
@@ -212,7 +261,7 @@ function HubertColumn({ activities, flat }) {
           No automated work logged yet. Hubert will post completed runs here as they happen.
         </div>
       ) : (
-        activities.map(a => <ActivityCard key={a.id} activity={a} />)
+        activities.map(a => <ActivityCard key={a.id} activity={a} onDelete={onDelete} />)
       )}
     </>
   );
@@ -247,10 +296,11 @@ function HubertColumn({ activities, flat }) {
   );
 }
 
-function ActivityCard({ activity: a }) {
+function ActivityCard({ activity: a, onDelete }) {
   const [hovered, setHovered] = useState(false);
   const ts = new Date(a.completed_at || a.created_at);
   const isFailed = a.status === 'failed';
+  const projectColor = a.project_color || HUBERT_DOT;
 
   return (
     <div
@@ -260,7 +310,7 @@ function ActivityCard({ activity: a }) {
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
         border: `1px solid ${isFailed ? '#f5cdd1' : 'var(--border)'}`,
-        borderLeft: `3px solid ${isFailed ? '#e5484d' : HUBERT_DOT}`,
+        borderLeft: `3px solid ${isFailed ? '#e5484d' : projectColor}`,
         borderRadius: 8, padding: '8px 10px', marginBottom: 5,
         transition: 'background 0.12s, border-color 0.12s',
       }}
@@ -268,8 +318,8 @@ function ActivityCard({ activity: a }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
         {a.project_name && (
           <span style={{
-            fontSize: 10.5, fontWeight: 600, color: HUBERT_DOT,
-            background: '#f1ecf8', borderRadius: 4, padding: '1px 6px',
+            fontSize: 10.5, fontWeight: 600, color: projectColor,
+            background: 'var(--surface2)', borderRadius: 4, padding: '1px 6px',
           }}>{a.project_name}</span>
         )}
         {isFailed && (
@@ -285,6 +335,23 @@ function ActivityCard({ activity: a }) {
         }}>
           {ts.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
         </span>
+        {onDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(a.id); }}
+            title="Delete"
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              padding: 2, lineHeight: 0, flexShrink: 0,
+              color: hovered ? '#e5484d' : 'var(--text-muted)',
+              opacity: hovered ? 1 : 0.45,
+              transition: 'opacity 0.12s, color 0.12s',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
       </div>
       <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
         {a.title}
@@ -293,7 +360,7 @@ function ActivityCard({ activity: a }) {
   );
 }
 
-function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop }) {
+function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop, projectColorByName }) {
   const nextStatus = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
   const nextLabel  = { todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' };
   const [dragOver, setDragOver] = useState(false);
@@ -334,6 +401,7 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop }) {
         {tasks.map(t => (
           <TaskCard key={t.id} task={t}
             onEdit={onEdit} onDelete={onDelete}
+            projectColorByName={projectColorByName}
             nextStatus={nextStatus[status]} nextLabel={nextLabel[status]} onStatusChange={onStatusChange} />
         ))}
       </div>
@@ -341,100 +409,115 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop }) {
   );
 }
 
-function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChange, isMobile }) {
+function StatusCircle({ status, onClick }) {
+  const ringColor = status === 'done' ? 'var(--success)' : status === 'in-progress' ? 'var(--accent)' : 'var(--text-muted)';
+  const title = status === 'todo' ? 'Start' : status === 'in-progress' ? 'Complete' : 'Reopen';
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        width: 14, height: 14, borderRadius: '50%',
+        border: `1.5px solid ${ringColor}`,
+        background: status === 'done' ? 'var(--success)' : 'transparent',
+        marginTop: 3, flexShrink: 0,
+        padding: 0, display: 'grid', placeItems: 'center',
+      }}
+    >
+      {status === 'in-progress' && (
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
+      )}
+      {status === 'done' && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile, projectColorByName }) {
   const [hovered, setHovered]   = useState(false);
   const [dragging, setDragging] = useState(false);
+  const isDone        = task.status === 'done';
+  const projectColor  = (projectColorByName && projectColorByName[task.project]) || 'var(--border)';
+  const assigneeColor = ASSIGNEE_COLOR[task.assignee] || ASSIGNEE_COLOR.Unassigned;
+  const hasProject    = !!task.project && projectColorByName && projectColorByName[task.project];
 
   return (
     <div
       draggable={!isMobile}
       onDragStart={e => { e.dataTransfer.setData('taskId', String(task.id)); e.dataTransfer.effectAllowed = 'move'; setDragging(true); }}
       onDragEnd={() => setDragging(false)}
+      onClick={() => onEdit(task)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         background: hovered && !dragging ? 'var(--surface2)' : 'var(--surface)',
-        border: `1.5px solid ${task.status === 'done' ? '#a8d5b5' : 'var(--border)'}`,
-        borderRadius: 10,
-        padding: isMobile ? '13px 14px' : '11px 12px',
-        marginBottom: isMobile ? 10 : 7,
-        cursor: isMobile ? 'default' : (dragging ? 'grabbing' : 'grab'),
+        border: `2px solid ${hasProject ? projectColor : 'var(--border)'}`,
+        borderRadius: 8,
+        padding: isMobile ? '10px 12px' : '8px 10px',
+        marginBottom: isMobile ? 7 : 5,
+        cursor: isMobile ? 'pointer' : (dragging ? 'grabbing' : 'grab'),
         opacity: dragging ? 0.45 : 1,
-        transition: 'border-color 0.15s, box-shadow 0.15s, opacity 0.1s',
-        boxShadow: hovered && !dragging ? 'var(--shadow-sm)' : 'var(--shadow-xs)',
+        transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.1s',
+        boxShadow: hovered && !dragging ? 'var(--shadow-sm)' : 'none',
       }}
     >
-      {/* Title row + action buttons */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-        <div style={{ fontWeight: 500, fontSize: isMobile ? 14 : 13, lineHeight: 1.4, color: 'var(--text)', flex: 1 }}>
-          {task.title}
-        </div>
-        <div style={{
-          display: 'flex', gap: 4, flexShrink: 0,
-          opacity: isMobile ? 1 : (hovered ? 1 : 0),
-          transition: 'opacity 0.15s',
-        }}>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => onEdit(task)}
-            style={{ color: 'var(--text-muted)', padding: '4px 6px' }}
-            title="Edit"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 10.5L5 11.5L12 4.5L10 2.5L2 10.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => onDelete(task.id)}
-            style={{ padding: '4px 6px' }}
-            title="Delete"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </button>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+        <StatusCircle
+          status={task.status}
+          onClick={e => { e.stopPropagation(); onStatusChange(task, nextStatus); }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <div style={{
+              flex: 1, minWidth: 0,
+              fontWeight: 500, fontSize: isMobile ? 13.5 : 13, lineHeight: 1.35,
+              color: isDone ? 'var(--text-muted)' : 'var(--text)',
+              textDecoration: isDone ? 'line-through' : 'none',
+              wordBreak: 'break-word',
+            }}>{task.title}</div>
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(task.id); }}
+              title="Delete"
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                padding: 2, lineHeight: 0, flexShrink: 0,
+                color: hovered ? '#e5484d' : 'var(--text-muted)',
+                opacity: hovered ? 1 : 0.45,
+                transition: 'opacity 0.12s, color 0.12s',
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
+            {hasProject && (
+              <span style={{
+                fontWeight: 600, color: projectColor,
+                background: projectColor + '1a',
+                borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
+              }}>{task.project}</span>
+            )}
+            <span className={`badge badge-${task.priority}`} style={{ padding: '0px 6px', fontSize: 10 }}>{task.priority}</span>
+            {task.due_date && (
+              <span>
+                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+            <span style={{
+              marginLeft: 'auto',
+              fontWeight: 600, color: assigneeColor,
+              background: assigneeColor + '1a',
+              borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
+            }}>{task.assignee}</span>
+          </div>
         </div>
       </div>
-
-      {task.description && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>{task.description}</p>
-      )}
-
-      {task.project && (
-        <div style={{ marginBottom: 7 }}>
-          <span style={{
-            fontSize: 11, fontWeight: 600, color: 'var(--accent)',
-            background: 'var(--accent-light)', borderRadius: 5, padding: '2px 7px',
-          }}>{task.project}</span>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span className={`badge badge-${task.priority}`}>{task.priority}</span>
-        <span style={{
-          fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface2)',
-          border: '1px solid var(--border)', borderRadius: 20, padding: '1px 7px', fontWeight: 500,
-        }}>{task.assignee}</span>
-        {task.due_date && (
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-            {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </span>
-        )}
-      </div>
-
-      <button
-        className="btn btn-outline btn-sm"
-        style={{
-          width: '100%', justifyContent: 'center',
-          fontSize: isMobile ? 12 : 11.5,
-          padding: isMobile ? '8px' : undefined,
-          color: 'var(--accent)', borderColor: 'var(--accent)', background: 'var(--accent-light)',
-        }}
-        onClick={() => onStatusChange(task, nextStatus)}
-      >
-        {nextLabel} →
-      </button>
     </div>
   );
 }
@@ -443,7 +526,7 @@ function TaskModal({ task, onSave, onClose }) {
   const [form, setForm] = useState({
     title:       task?.title       || '',
     description: task?.description || '',
-    assignee:    task?.assignee    || 'Alex',
+    assignee:    task?.assignee    || 'Unassigned',
     status:      task?.status      || 'todo',
     priority:    task?.priority    || 'medium',
     due_date:    task?.due_date    || '',

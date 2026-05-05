@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Tasks from './components/Tasks';
 import Calendar from './components/Calendar';
 import WorkingHours from './components/WorkingHours';
 import Projects from './components/Projects';
 import Chat from './components/Chat';
 import Ideas from './components/Ideas';
+import Login from './Login';
 
 const T = {
   bg: '#fafaf9', card: '#ffffff', ink: '#0f1115', ink2: '#1f2228',
@@ -27,6 +28,16 @@ const NAV = [
   { id: 'chat',     label: 'Chat',          short: 'Chat',     icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
   { id: 'ideas',    label: 'Ideas',         short: 'Ideas',    icon: 'M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1' },
 ];
+
+async function logout() {
+  try {
+    await fetch(`${import.meta.env.BASE_URL}api/auth/logout`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+  } catch {}
+  window.location.reload();
+}
 
 /* ── Desktop sidebar ── */
 function Sidebar({ page, setPage }) {
@@ -69,6 +80,18 @@ function Sidebar({ page, setPage }) {
             </button>
           );
         })}
+      </div>
+      <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+        <button onClick={logout} style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          width: '100%', padding: '7px 10px', borderRadius: 8,
+          fontSize: 12.5, fontWeight: 500, color: T.mid,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          textAlign: 'left', letterSpacing: '-0.01em',
+        }}>
+          <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" size={14} stroke={T.mute} sw={1.7} />
+          Sign out
+        </button>
       </div>
     </nav>
   );
@@ -121,6 +144,16 @@ function MobileHeader({ page, setPage }) {
             </button>
           );
         })}
+        <button onClick={logout} style={{
+          marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4,
+          padding: '6px 11px', borderRadius: 99,
+          border: `1px solid ${T.line}`, background: T.bg, color: T.mid,
+          fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          whiteSpace: 'nowrap', flexShrink: 0,
+        }}>
+          <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" size={11} stroke={T.mute} sw={1.8} />
+          Sign out
+        </button>
       </div>
     </div>
   );
@@ -128,6 +161,22 @@ function MobileHeader({ page, setPage }) {
 
 export default function App() {
   const [page, setPage] = useState('tasks');
+  const [authState, setAuthState] = useState('checking'); // checking | in | out
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${import.meta.env.BASE_URL}api/auth/me`, { credentials: 'same-origin' })
+      .then(res => { if (!cancelled) setAuthState(res.ok ? 'in' : 'out'); })
+      .catch(() => { if (!cancelled) setAuthState('out'); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (authState === 'checking') {
+    return <div style={{ minHeight: '100dvh', background: T.bg }} />;
+  }
+  if (authState === 'out') {
+    return <Login onSuccess={() => setAuthState('in')} />;
+  }
 
   return (
     <>

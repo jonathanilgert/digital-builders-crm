@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { title, description, assignee, status, priority, due_date } = req.body;
+  const { title, description, assignee, status, priority, due_date, project } = req.body;
   const task = db.insert('tasks', {
     title,
     description: description || null,
@@ -16,13 +16,14 @@ router.post('/', (req, res) => {
     status: status || 'todo',
     priority: priority || 'medium',
     due_date: due_date || null,
+    project: project || null,
   });
   res.json(task);
 });
 
 router.put('/:id', (req, res) => {
-  const { title, description, assignee, status, priority, due_date } = req.body;
-  const task = db.update('tasks', req.params.id, { title, description, assignee, status, priority, due_date });
+  const { title, description, assignee, status, priority, due_date, project } = req.body;
+  const task = db.update('tasks', req.params.id, { title, description, assignee, status, priority, due_date, project });
   if (!task) return res.status(404).json({ error: 'Not found' });
   res.json(task);
 });

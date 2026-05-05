@@ -25,21 +25,42 @@ You can do both for the same event if it warrants it (rare).
 
 ## Setup
 
-Set the API key in the server's environment. Anything that runs the
-server (systemd, PM2, docker, plain `node`) needs to expose it as an
-env var:
+Set these in the server's environment (PM2 ecosystem, systemd
+`EnvironmentFile=`, or your secret manager):
 
 ```bash
-OPENCLAW_API_KEY=<long random string>
+JWT_SECRET=<long random string, ≥16 chars>      # required for app login
+APP_PASSWORD=<shared workspace password>        # required for app login
+OPENCLAW_API_KEY=<long random string>           # required for integrations
 ```
 
-If `OPENCLAW_API_KEY` is unset, all `/api/integrations/*` endpoints
-return `503 Integration disabled`. The rest of the app continues to
-work normally.
+- If `JWT_SECRET` or `APP_PASSWORD` is unset, every UI route returns
+  `503 Auth disabled` — the app effectively goes offline. Keep these
+  set. Rotating `JWT_SECRET` invalidates all existing sessions.
+- If `OPENCLAW_API_KEY` is unset, only `/api/integrations/*` returns
+  `503 Integration disabled`. The UI keeps working.
 
 `.env.example` is checked in as a template. The actual `.env` is not
-checked in — load it via `systemctl`'s `EnvironmentFile=`, PM2's
-`env_file`, or your secret manager of choice.
+checked in.
+
+## App login
+
+The UI is gated by a single shared password (`APP_PASSWORD`). The
+React client renders a login screen until `GET /api/auth/me` returns
+200, then swaps in the workspace.
+
+| Route                | Method | Notes                                   |
+| -------------------- | ------ | --------------------------------------- |
+| `/api/auth/me`       | GET    | 200 if signed in, 401 otherwise         |
+| `/api/auth/login`    | POST   | `{"password": "..."}`. Sets cookie      |
+| `/api/auth/logout`   | POST   | Clears cookie                           |
+
+Cookie: HttpOnly, SameSite=Lax, Path=/app, 30-day TTL, signed JWT.
+Login is rate-limited to 10 attempts/min per IP.
+
+Integration routes (`/api/integrations/*`) are NOT session-gated —
+they keep using `Authorization: Bearer $OPENCLAW_API_KEY` so cron
+jobs and Hubert don't need a browser session.
 
 ---
 
@@ -164,41 +185,152 @@ Query params (all optional):
 
 Delete a single activity. Useful to clean up a bad cron run.
 
+### `GET /api/integrations/tasks`
+
+List tasks. Shape:
+
+```json
+[
+  {
+    "id": 12,
+    "title": "Run nightly Penned audit",
+    "description": "Check unsent reminders",
+    "assignee": "Hubert",
+    "status": "todo",
+    "priority": "high",
+    "due_date": "2026-05-03",
+    "project_id": 3,
+    "project_name": "Penned",
+    "project_color": "#d68a23",
+    "claimed_by": null,
+    "claimed_at": null,
+    "completed_at": null,
+    "completion": null,
+    "created_at": "2026-05-01T21:13:43.852Z"
+  }
+]
+```
+
+Query params: `assignee`, `status`, `project`, `project_id`. The
+typical Hubert poll is `?assignee=Hubert`.
+
+`status` values used by the kanban are `todo`, `in-progress`, `done`
+(hyphen, not underscore — those are activity statuses).
+
+### `GET /api/integrations/tasks/:id`
+
+Same shape as a single row above, or `404` if missing.
+
+### `POST /api/integrations/tasks/:id/claim`
+
+Marks a task as `in-progress` and stamps `claimed_by` / `claimed_at`.
+Body is optional; defaults to `{ "claimed_by": "Hubert" }`.
+
+- `409 Task already claimed` if a different `claimed_by` already owns it
+- `409 Task already complete` if the task is already `done`
+- Re-claiming with the same `claimed_by` is a no-op (the original
+  `claimed_at` is preserved)
+
+### `POST /api/integrations/tasks/:id/complete`
+
+Marks a task `done` and writes a single activity row to the Hubert
+column. Body:
+
+```json
+{
+  "summary": "Completed task summary",
+  "details": "Optional detailed notes",
+  "result": "success"
+}
+```
+
+- `summary` — becomes the activity title. If omitted, falls back to
+  `"Completed task: <task title>"`
+- `details` — becomes the activity description (optional)
+- `result` — `"success"` (default) or `"failed"`. `"failed"` writes a
+  `failed` activity and leaves the task status untouched (so it can be
+  retried)
+
+**Idempotent** on `external_ref = "task-<id>"` — repeated calls return
+the original activity rather than duplicating.
+
+Response:
+
+```json
+{
+  "task":     { /* shapeTask, see GET /tasks */ },
+  "activity": { /* shapeActivity, see POST /activities */ }
+}
+```
+
+### `GET /api/integrations/projects`
+
+Returns the project list trimmed to what an integration needs:
+
+```json
+[
+  { "id": 1, "name": "DirtLink", "slug": "dirtlink", "color": "#7e57c2" },
+  { "id": 3, "name": "Penned",   "slug": "penned",   "color": "#d68a23" }
+]
+```
+
+Use `color` to render activity entries with consistent per-project
+colors. The same value is surfaced as `project_color` on every
+activity returned by `GET /activities`.
+
 ### `POST /api/integrations/tasks`
 
 For the rare case the integration wants something on the human kanban.
 Same shape as `POST /api/tasks` (title, description, assignee, status,
 priority, due_date) plus `project` / `project_id`. No idempotency —
-every call creates a new task.
+every call creates a new task. Prefer the activity feed for automated
+work; the kanban is reserved for human-managed tasks.
 
-### `GET /api/activities` (unauthenticated, used by the UI)
+### `GET /api/activities` (session-gated, used by the UI)
 
 The CRM's own Project drawer reads from this endpoint. Same query
-params as the integrations GET. Local-only — do not expose this path
-publicly without auth if you ever lock down the rest of the app.
+params as the integrations GET. Requires a valid session cookie
+(see "App login" below) — integrations should use
+`/api/integrations/activities` with the bearer key.
 
 ---
 
 ## Example: curl
 
+The Hubert worker loop is roughly: list → claim → do the work → complete.
+A cron job that doesn't correspond to a kanban task just posts an activity
+directly.
+
 ```bash
-curl -X POST https://digitalbuilders.ca/app/api/integrations/activities \
-  -H "Authorization: Bearer $OPENCLAW_API_KEY" \
-  -H "Content-Type: application/json" \
+BASE=https://digitalbuilders.ca/app/api
+AUTH="Authorization: Bearer $OPENCLAW_API_KEY"
+
+# 1. Fetch tasks assigned to Hubert
+curl -s "$BASE/integrations/tasks?assignee=Hubert" -H "$AUTH"
+
+# 2. Claim a task (defaults to claimed_by=Hubert)
+curl -s -X POST "$BASE/integrations/tasks/12/claim" \
+  -H "$AUTH" -H "Content-Type: application/json" -d '{}'
+
+# 3. Post a Hubert activity (cron / standalone work, no kanban task)
+curl -s -X POST "$BASE/integrations/activities" \
+  -H "$AUTH" -H "Content-Type: application/json" \
   -d '{
     "project": "dirtlink",
-    "type": "completed_task",
     "title": "Weekly permit report generated",
-    "description": "Generated latest Calgary permit report and emailed summary.",
-    "status": "done",
-    "completed_at": "2026-04-29T21:00:00Z",
-    "source": "openclaw",
+    "description": "Generated Calgary permit report and emailed summary.",
+    "source": "hubert",
     "external_ref": "dirtlink-weekly-permit-report-2026-04-29",
-    "metadata": {
-      "job": "weekly_permit_report",
-      "channel": "email",
-      "artifacts": ["projects/dirtlink/data/weekly_reports/latest.csv"]
-    }
+    "metadata": { "job": "weekly_permit_report" }
+  }'
+
+# 4. Complete the kanban task (auto-writes a Hubert activity, idempotent)
+curl -s -X POST "$BASE/integrations/tasks/12/complete" \
+  -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{
+    "summary": "Penned audit complete",
+    "details": "Found 0 unsent reminders",
+    "result": "success"
   }'
 ```
 

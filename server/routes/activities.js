@@ -3,6 +3,11 @@ const router = express.Router();
 const db = require('../db');
 const { findProject } = require('../lib/projects');
 
+function decorate(a, projectsById) {
+  const p = a.project_id != null ? projectsById.get(Number(a.project_id)) : null;
+  return { ...a, project_color: a.color || (p && p.dot) || null };
+}
+
 router.get('/', (req, res) => {
   const { project, project_id, source, type, limit } = req.query;
   let rows = db.get('activities');
@@ -18,7 +23,14 @@ router.get('/', (req, res) => {
   rows.sort((a, b) => (b.completed_at || b.created_at).localeCompare(a.completed_at || a.created_at));
 
   const max = Math.min(Number(limit) || 100, 500);
-  res.json(rows.slice(0, max));
+  const projectsById = new Map(db.get('projects').map(p => [p.id, p]));
+  res.json(rows.slice(0, max).map(a => decorate(a, projectsById)));
+});
+
+router.delete('/:id', (req, res) => {
+  const ok = db.delete('activities', req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Not found' });
+  res.json({ success: true });
 });
 
 module.exports = router;
