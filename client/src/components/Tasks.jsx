@@ -110,12 +110,6 @@ export default function Tasks() {
     loadTasks();
   }
 
-  async function handleDrop(taskId, newStatus) {
-    const task = tasks.find(t => String(t.id) === String(taskId));
-    if (!task || task.status === newStatus) return;
-    await updateStatus(task, newStatus);
-  }
-
   const filtered = tasks.filter(t =>
     (filter.assignee === 'all' || t.assignee === filter.assignee) &&
     (filter.status   === 'all' || t.status   === filter.status)
@@ -236,7 +230,7 @@ export default function Tasks() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
           {STATUSES.map(s => (
             <Column key={s} status={s} tasks={byStatus[s]} projectColorByName={projectColorByName}
-              onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} onDrop={handleDrop} />
+              onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
           ))}
           <HubertColumn activities={activities} onDelete={deleteActivity} />
         </div>
@@ -360,25 +354,12 @@ function ActivityCard({ activity: a, onDelete }) {
   );
 }
 
-function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop: dropHandler, projectColorByName }) {
+function Column({ status, tasks, onEdit, onDelete, onStatusChange, projectColorByName }) {
   const nextStatus = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
   const nextLabel  = { todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' };
-  const [dragOver, setDragOver] = useState(false);
 
   return (
-    <div
-      className="panel"
-      onDragEnter={e => { e.preventDefault(); setDragOver(true); }}
-      onDragOver={e => { e.preventDefault(); }}
-      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }}
-      onDrop={e => { e.preventDefault(); setDragOver(false); dropHandler(e.dataTransfer.getData('taskId'), status); }}
-      style={{
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        outline: dragOver ? `2px dashed ${DOT_COLOR[status]}` : '2px dashed transparent',
-        background: dragOver ? 'var(--accent-light)' : undefined,
-        transition: 'outline 0.1s, background 0.1s',
-      }}
-    >
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{
         padding: '12px 14px 10px', borderBottom: '1.5px solid var(--border-light)',
         display: 'flex', alignItems: 'center', gap: 8,
@@ -396,7 +377,7 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop: dropH
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
         {tasks.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12.5, padding: '24px 0', opacity: 0.7 }}>
-            {dragOver ? 'Drop here' : 'No tasks'}
+            No tasks
           </div>
         )}
         {tasks.map(t => (
@@ -437,9 +418,8 @@ function StatusCircle({ status, onClick }) {
   );
 }
 
-function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile, projectColorByName }) {
-  const [hovered, setHovered]   = useState(false);
-  const [dragging, setDragging] = useState(false);
+function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChange, isMobile, projectColorByName }) {
+  const [hovered, setHovered] = useState(false);
   const isDone        = task.status === 'done';
   const projectColor  = (projectColorByName && projectColorByName[task.project]) || 'var(--border)';
   const assigneeColor = ASSIGNEE_COLOR[task.assignee] || ASSIGNEE_COLOR.Unassigned;
@@ -447,31 +427,24 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
 
   return (
     <div
-      draggable={!isMobile}
-      onDragStart={e => { e.dataTransfer.setData('taskId', String(task.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => setDragging(true), 0); }}
-      onDragEnd={() => setDragging(false)}
       onClick={() => onEdit(task)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: hovered && !dragging ? 'var(--surface2)' : 'var(--surface)',
+        background: hovered ? 'var(--surface2)' : 'var(--surface)',
         border: `2px solid ${hasProject ? projectColor : 'var(--border)'}`,
         borderRadius: 8,
         padding: isMobile ? '10px 12px' : '8px 10px',
         marginBottom: isMobile ? 7 : 5,
-        cursor: isMobile ? 'pointer' : (dragging ? 'grabbing' : 'grab'),
-        opacity: dragging ? 0.45 : 1,
-        transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.1s',
-        boxShadow: hovered && !dragging ? 'var(--shadow-sm)' : 'none',
+        cursor: 'pointer',
+        transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s',
+        boxShadow: hovered ? 'var(--shadow-sm)' : 'none',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-        <StatusCircle
-          status={task.status}
-          onClick={e => { e.stopPropagation(); onStatusChange(task, nextStatus); }}
-        />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+          {/* Title + delete */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
             <div style={{
               flex: 1, minWidth: 0,
               fontWeight: 500, fontSize: isMobile ? 13.5 : 13, lineHeight: 1.35,
@@ -485,9 +458,8 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
                 padding: 2, lineHeight: 0, flexShrink: 0,
-                color: hovered ? '#e5484d' : 'var(--text-muted)',
-                opacity: hovered ? 1 : 0.45,
-                transition: 'opacity 0.12s, color 0.12s',
+                color: '#e5484d', opacity: hovered ? 0.7 : 0,
+                transition: 'opacity 0.12s',
               }}
             >
               <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
@@ -496,7 +468,8 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
+          {/* Meta row: project, priority, date | advance arrow */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
             {hasProject && (
               <span style={{
                 fontWeight: 600, color: projectColor,
@@ -505,17 +478,36 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
               }}>{task.project}</span>
             )}
             <span className={`badge badge-${task.priority}`} style={{ padding: '0px 6px', fontSize: 10 }}>{task.priority}</span>
-            {task.due_date && (
-              <span>
-                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            )}
             <span style={{
-              marginLeft: 'auto',
               fontWeight: 600, color: assigneeColor,
               background: assigneeColor + '1a',
               borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
             }}>{task.assignee}</span>
+            {task.due_date && (
+              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+
+            {/* Next-status arrow */}
+            <button
+              onClick={e => { e.stopPropagation(); onStatusChange(task, nextStatus); }}
+              title={nextLabel}
+              style={{
+                marginLeft: 'auto', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 7px', borderRadius: 5,
+                background: 'var(--accent-light)',
+                border: '1px solid var(--accent)',
+                color: 'var(--accent)',
+                fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {nextLabel}
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                <path d="M3 1.5l3.5 3.5L3 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
