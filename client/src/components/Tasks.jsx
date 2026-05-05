@@ -63,6 +63,12 @@ export default function Tasks() {
     loadTasks();
   }
 
+  async function handleDrop(taskId, newStatus) {
+    const task = tasks.find(t => String(t.id) === String(taskId));
+    if (!task || task.status === newStatus) return;
+    await updateStatus(task, newStatus);
+  }
+
   const filtered = tasks.filter(t =>
     (filter.assignee === 'all' || t.assignee === filter.assignee) &&
     (filter.status   === 'all' || t.status   === filter.status)
@@ -181,7 +187,7 @@ export default function Tasks() {
         /* Desktop: 4-column kanban grid */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
           {STATUSES.map(s => (
-            <Column key={s} status={s} tasks={byStatus[s]} onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
+            <Column key={s} status={s} tasks={byStatus[s]} onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} onDrop={handleDrop} />
           ))}
           <HubertColumn activities={activities} />
         </div>
@@ -287,12 +293,24 @@ function ActivityCard({ activity: a }) {
   );
 }
 
-function Column({ status, tasks, onEdit, onDelete, onStatusChange }) {
+function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop }) {
   const nextStatus = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
   const nextLabel  = { todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' };
+  const [dragOver, setDragOver] = useState(false);
 
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div
+      className="panel"
+      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); onDrop(e.dataTransfer.getData('taskId'), status); }}
+      style={{
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        outline: dragOver ? `2px dashed ${DOT_COLOR[status]}` : '2px dashed transparent',
+        background: dragOver ? 'var(--accent-light)' : undefined,
+        transition: 'outline 0.1s, background 0.1s',
+      }}
+    >
       <div style={{
         padding: '12px 14px 10px', borderBottom: '1.5px solid var(--border-light)',
         display: 'flex', alignItems: 'center', gap: 8,
@@ -310,7 +328,7 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
         {tasks.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12.5, padding: '24px 0', opacity: 0.7 }}>
-            No tasks
+            {dragOver ? 'Drop here' : 'No tasks'}
           </div>
         )}
         {tasks.map(t => (
@@ -324,21 +342,26 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange }) {
 }
 
 function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChange, isMobile }) {
-  const [hovered, setHovered] = useState(false);
+  const [hovered, setHovered]   = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   return (
     <div
+      draggable={!isMobile}
+      onDragStart={e => { e.dataTransfer.setData('taskId', String(task.id)); e.dataTransfer.effectAllowed = 'move'; setDragging(true); }}
+      onDragEnd={() => setDragging(false)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: hovered ? 'var(--surface2)' : 'var(--surface)',
+        background: hovered && !dragging ? 'var(--surface2)' : 'var(--surface)',
         border: `1.5px solid ${task.status === 'done' ? '#a8d5b5' : 'var(--border)'}`,
         borderRadius: 10,
         padding: isMobile ? '13px 14px' : '11px 12px',
         marginBottom: isMobile ? 10 : 7,
-        cursor: 'default',
-        transition: 'border-color 0.15s, box-shadow 0.15s',
-        boxShadow: hovered ? 'var(--shadow-sm)' : 'var(--shadow-xs)',
+        cursor: isMobile ? 'default' : (dragging ? 'grabbing' : 'grab'),
+        opacity: dragging ? 0.45 : 1,
+        transition: 'border-color 0.15s, box-shadow 0.15s, opacity 0.1s',
+        boxShadow: hovered && !dragging ? 'var(--shadow-sm)' : 'var(--shadow-xs)',
       }}
     >
       {/* Title row + action buttons */}
