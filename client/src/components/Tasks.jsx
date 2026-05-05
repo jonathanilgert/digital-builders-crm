@@ -360,7 +360,7 @@ function ActivityCard({ activity: a, onDelete }) {
   );
 }
 
-function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop, projectColorByName }) {
+function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop: dropHandler, projectColorByName }) {
   const nextStatus = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
   const nextLabel  = { todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' };
   const [dragOver, setDragOver] = useState(false);
@@ -368,9 +368,10 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange, onDrop, proje
   return (
     <div
       className="panel"
-      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+      onDragEnter={e => { e.preventDefault(); setDragOver(true); }}
+      onDragOver={e => { e.preventDefault(); }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }}
-      onDrop={e => { e.preventDefault(); setDragOver(false); onDrop(e.dataTransfer.getData('taskId'), status); }}
+      onDrop={e => { e.preventDefault(); setDragOver(false); dropHandler(e.dataTransfer.getData('taskId'), status); }}
       style={{
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         outline: dragOver ? `2px dashed ${DOT_COLOR[status]}` : '2px dashed transparent',
@@ -447,7 +448,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, onStatusChange, isMobile
   return (
     <div
       draggable={!isMobile}
-      onDragStart={e => { e.dataTransfer.setData('taskId', String(task.id)); e.dataTransfer.effectAllowed = 'move'; setDragging(true); }}
+      onDragStart={e => { e.dataTransfer.setData('taskId', String(task.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => setDragging(true), 0); }}
       onDragEnd={() => setDragging(false)}
       onClick={() => onEdit(task)}
       onMouseEnter={() => setHovered(true)}
