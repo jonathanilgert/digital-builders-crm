@@ -185,14 +185,22 @@ function CompletedRow({ task, projectColorByName, onRestore, onDelete }) {
         </svg>
       </div>
 
-      {/* Title */}
-      <div style={{
-        flex: 1, minWidth: 0,
-        fontSize: 13, fontWeight: 500, color: 'var(--text-muted)',
-        wordBreak: 'break-word',
-        lineHeight: 1.35,
-      }}>
-        {task.title}
+      {/* Title + description */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 500, color: 'var(--text-muted)',
+          wordBreak: 'break-word', lineHeight: 1.35,
+        }}>
+          {task.title}
+        </div>
+        {task.description && (
+          <div style={{
+            fontSize: 11.5, color: 'var(--text-muted)', opacity: 0.7,
+            marginTop: 3, lineHeight: 1.45, wordBreak: 'break-word',
+          }}>
+            {task.description}
+          </div>
+        )}
       </div>
 
       {/* Badges */}
