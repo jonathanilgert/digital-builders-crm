@@ -497,30 +497,31 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
             </button>
           </div>
 
-          {/* Meta row: project, priority, assignee, date */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-            {hasProject && (
+          {/* Meta row: left = project + date, right = assignee + priority */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              {hasProject && (
+                <span style={{
+                  fontSize: 10.5, fontWeight: 600, color: projectColor,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{task.project}</span>
+              )}
+              {task.due_date && (
+                <span style={{ fontSize: 10.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               <span style={{
-                fontWeight: 500, color: 'var(--text-muted)',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
+                fontWeight: 500, color: 'var(--text-muted)', fontSize: 10,
+              }}>{task.priority}</span>
+              <span style={{
+                fontWeight: 600, color: assigneeColor,
+                background: assigneeColor + '1a',
                 borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
-              }}>{task.project}</span>
-            )}
-            <span style={{
-              fontWeight: 500, color: 'var(--text-muted)',
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: 4, padding: '1px 6px', fontSize: 10,
-            }}>{task.priority}</span>
-            <span style={{
-              fontWeight: 600, color: assigneeColor,
-              background: assigneeColor + '1a',
-              borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
-            }}>{task.assignee}</span>
-            {task.due_date && (
-              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            )}
+              }}>{task.assignee}</span>
+            </div>
           </div>
         </div>
       </div>
