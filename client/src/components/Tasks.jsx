@@ -497,16 +497,20 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
             </button>
           </div>
 
-          {/* Meta row: project, priority, date | advance arrow */}
+          {/* Meta row: project, priority, assignee, date */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
             {hasProject && (
               <span style={{
-                fontWeight: 600, color: projectColor,
-                background: projectColor + '1a',
+                fontWeight: 500, color: 'var(--text-muted)',
+                background: 'var(--surface2)', border: '1px solid var(--border)',
                 borderRadius: 4, padding: '1px 6px', fontSize: 10.5,
               }}>{task.project}</span>
             )}
-            <span className={`badge badge-${task.priority}`} style={{ padding: '0px 6px', fontSize: 10 }}>{task.priority}</span>
+            <span style={{
+              fontWeight: 500, color: 'var(--text-muted)',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 4, padding: '1px 6px', fontSize: 10,
+            }}>{task.priority}</span>
             <span style={{
               fontWeight: 600, color: assigneeColor,
               background: assigneeColor + '1a',
