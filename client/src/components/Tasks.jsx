@@ -19,9 +19,9 @@ const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 // Assignee palette — picks hues that don't collide with priority badges
 // (low=green, medium=amber, high=red) or with project borders.
 const ASSIGNEE_COLOR = {
-  Alex:       '#ec4899', // pink
-  Jonathan:   '#06b6d4', // cyan
-  Hubert:     '#7c3aed', // violet (matches Hubert column branding)
+  Alex:       '#d4789f', // dusty pink
+  Jonathan:   '#3aa8be', // muted cyan
+  Hubert:     '#8b6bbf', // soft violet
   Unassigned: '#94a3b8', // slate
 };
 
@@ -443,7 +443,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
         border: '1px solid var(--border)',
-        borderLeft: `3px solid ${hasProject ? projectColor : 'var(--border-light, var(--border))'}`,
+        borderLeft: `3px solid ${hasProject ? projectColor + 'bb' : 'var(--border-light, var(--border))'}`,
         borderRadius: 8,
         padding: isMobile ? '10px 12px' : '8px 10px',
         marginBottom: isMobile ? 7 : 5,
@@ -503,6 +503,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
               {hasProject && (
                 <span style={{
                   fontSize: 10.5, fontWeight: 600, color: projectColor,
+                  opacity: 0.75,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{task.project}</span>
               )}
