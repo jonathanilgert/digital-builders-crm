@@ -442,7 +442,8 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
       onMouseLeave={() => setHovered(false)}
       style={{
         background: hovered ? 'var(--surface2)' : 'var(--surface)',
-        border: `2px solid ${hasProject ? projectColor : 'var(--border)'}`,
+        border: '1px solid var(--border)',
+        borderLeft: `3px solid ${hasProject ? projectColor : 'var(--border-light, var(--border))'}`,
         borderRadius: 8,
         padding: isMobile ? '10px 12px' : '8px 10px',
         marginBottom: isMobile ? 7 : 5,
