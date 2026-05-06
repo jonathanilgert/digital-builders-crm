@@ -488,26 +488,6 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
                 {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             )}
-
-            {/* Next-status arrow */}
-            <button
-              onClick={e => { e.stopPropagation(); onStatusChange(task, nextStatus); }}
-              title={nextLabel}
-              style={{
-                marginLeft: 'auto', flexShrink: 0,
-                display: 'flex', alignItems: 'center', gap: 3,
-                padding: '2px 7px', borderRadius: 5,
-                background: 'var(--accent-light)',
-                border: '1px solid var(--accent)',
-                color: 'var(--accent)',
-                fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              {nextLabel}
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-                <path d="M3 1.5l3.5 3.5L3 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
           </div>
         </div>
       </div>
