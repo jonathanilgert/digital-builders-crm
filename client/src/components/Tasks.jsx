@@ -3,7 +3,8 @@ import useIsMobile from '../hooks/useIsMobile';
 
 const TEAM     = ['Unassigned', 'Alex', 'Jonathan', 'Hubert'];
 const STATUSES = ['todo', 'in-progress', 'done'];
-const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done' };
+const ALL_STATUSES = ['todo', 'in-progress', 'done', 'archived'];
+const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done', archived: 'Archived' };
 const PRIORITIES = ['low', 'medium', 'high'];
 
 // Project sort + dropdown order: DirtLink and Penned float to the top.
@@ -110,7 +111,13 @@ export default function Tasks() {
     loadTasks();
   }
 
+  async function archiveTask(task) {
+    await api(`/tasks/${task.id}`, { method: 'PUT', body: JSON.stringify({ ...task, status: 'archived' }) });
+    loadTasks();
+  }
+
   const filtered = tasks.filter(t =>
+    t.status !== 'archived' &&
     (filter.assignee === 'all' || t.assignee === filter.assignee) &&
     (filter.status   === 'all' || t.status   === filter.status)
   );
@@ -219,6 +226,7 @@ export default function Tasks() {
                     nextStatus={{ todo: 'in-progress', 'in-progress': 'done', done: 'todo' }[mobileTab]}
                     nextLabel={{ todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' }[mobileTab]}
                     onStatusChange={updateStatus}
+                    onArchive={mobileTab === 'done' ? archiveTask : null}
                   />
                 ))}
               </>
@@ -230,7 +238,8 @@ export default function Tasks() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
           {STATUSES.map(s => (
             <Column key={s} status={s} tasks={byStatus[s]} projectColorByName={projectColorByName}
-              onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus} />
+              onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus}
+              onArchive={s === 'done' ? archiveTask : null} />
           ))}
           <HubertColumn activities={activities} onDelete={deleteActivity} />
         </div>
@@ -354,7 +363,7 @@ function ActivityCard({ activity: a, onDelete }) {
   );
 }
 
-function Column({ status, tasks, onEdit, onDelete, onStatusChange, projectColorByName }) {
+function Column({ status, tasks, onEdit, onDelete, onStatusChange, onArchive, projectColorByName }) {
   const nextStatus = { todo: 'in-progress', 'in-progress': 'done', done: 'todo' };
   const nextLabel  = { todo: 'Start', 'in-progress': 'Complete', done: 'Reopen' };
 
@@ -384,7 +393,8 @@ function Column({ status, tasks, onEdit, onDelete, onStatusChange, projectColorB
           <TaskCard key={t.id} task={t}
             onEdit={onEdit} onDelete={onDelete}
             projectColorByName={projectColorByName}
-            nextStatus={nextStatus[status]} nextLabel={nextLabel[status]} onStatusChange={onStatusChange} />
+            nextStatus={nextStatus[status]} nextLabel={nextLabel[status]}
+            onStatusChange={onStatusChange} onArchive={onArchive} />
         ))}
       </div>
     </div>
@@ -418,7 +428,7 @@ function StatusCircle({ status, onClick }) {
   );
 }
 
-function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChange, isMobile, projectColorByName }) {
+function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChange, onArchive, isMobile, projectColorByName }) {
   const [hovered, setHovered] = useState(false);
   const isDone        = task.status === 'done';
   const projectColor  = (projectColorByName && projectColorByName[task.project]) || 'var(--border)';
@@ -443,7 +453,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Title + delete */}
+          {/* Title + actions */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
             <div style={{
               flex: 1, minWidth: 0,
@@ -452,6 +462,24 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
               textDecoration: isDone ? 'line-through' : 'none',
               wordBreak: 'break-word',
             }}>{task.title}</div>
+            {onArchive && (
+              <button
+                onClick={e => { e.stopPropagation(); onArchive(task); }}
+                title="Archive — move to Completed"
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  padding: 2, lineHeight: 0, flexShrink: 0,
+                  color: '#16a34a', opacity: hovered ? 0.7 : 0,
+                  transition: 'opacity 0.12s',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <rect x="1" y="1" width="14" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M2 5v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V5" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M6 8.5h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+            )}
             <button
               onClick={e => { e.stopPropagation(); onDelete(task.id); }}
               title="Delete"
@@ -536,7 +564,7 @@ function TaskModal({ task, onSave, onClose }) {
           <div className="form-group">
             <label>Status</label>
             <select value={form.status} onChange={set('status')}>
-              {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+              {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           </div>
         </div>

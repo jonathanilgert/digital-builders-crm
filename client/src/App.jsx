@@ -5,6 +5,7 @@ import WorkingHours from './components/WorkingHours';
 import Projects from './components/Projects';
 import Chat from './components/Chat';
 import Ideas from './components/Ideas';
+import Completed from './components/Completed';
 import Login from './Login';
 
 const T = {
@@ -26,7 +27,8 @@ const NAV = [
   { id: 'projects', label: 'Projects',      short: 'Projects', icon: 'M3 8h18v12H3zM8 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3M3 13h18' },
   { id: 'hours',    label: 'Working hours', short: 'Hours',    icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2' },
   { id: 'chat',     label: 'Chat',          short: 'Chat',     icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
-  { id: 'ideas',    label: 'Ideas',         short: 'Ideas',    icon: 'M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1' },
+  { id: 'ideas',     label: 'Ideas',          short: 'Ideas',    icon: 'M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1' },
+  { id: 'completed', label: 'Completed',      short: 'Done',     icon: 'M9 11l2 2 4-4M3 7h18v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7zM3 7l1.5-4h15L21 7' },
 ];
 
 async function logout() {
@@ -208,12 +210,13 @@ export default function App() {
 
           {/* Page content */}
           <main style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {page === 'tasks'    && <Tasks />}
-            {page === 'calendar' && <Calendar />}
-            {page === 'projects' && <Projects />}
-            {page === 'hours'    && <WorkingHours />}
-            {page === 'chat'     && <Chat />}
-            {page === 'ideas'    && <Ideas />}
+            {page === 'tasks'     && <Tasks />}
+            {page === 'calendar'  && <Calendar />}
+            {page === 'projects'  && <Projects />}
+            {page === 'hours'     && <WorkingHours />}
+            {page === 'chat'      && <Chat />}
+            {page === 'ideas'     && <Ideas />}
+            {page === 'completed' && <Completed />}
           </main>
         </div>
       </div>
