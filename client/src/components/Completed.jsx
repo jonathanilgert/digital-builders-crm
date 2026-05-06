@@ -57,7 +57,10 @@ export default function Completed() {
 
   const projectColorByName = Object.fromEntries(projects.map(p => [p.name, p.dot]));
 
-  const projectNames = [...new Set(tasks.map(t => t.project).filter(Boolean))].sort();
+  const countByProject = tasks.reduce((acc, t) => {
+    if (t.project) acc[t.project] = (acc[t.project] || 0) + 1;
+    return acc;
+  }, {});
 
   const filtered = (filter === 'all' ? tasks : tasks.filter(t => t.project === filter))
     .slice()
@@ -74,7 +77,7 @@ export default function Completed() {
     }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 20, flexShrink: 0 }}>
+      <div style={{ marginBottom: 16, flexShrink: 0 }}>
         <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text)', marginBottom: 2 }}>
           Completed
         </h1>
@@ -86,21 +89,38 @@ export default function Completed() {
       {/* Project filter chips */}
       <div style={{
         display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18, flexShrink: 0,
+        paddingBottom: 2,
       }}>
-        {['all', ...projectNames].map(p => {
-          const active = filter === p;
-          const color = p !== 'all' ? (projectColorByName[p] || '#94a3b8') : null;
+        <button onClick={() => setFilter('all')} style={{
+          padding: '5px 13px', borderRadius: 99, fontSize: 12,
+          fontWeight: filter === 'all' ? 600 : 500,
+          border: filter === 'all' ? 'none' : '1px solid var(--border)',
+          background: filter === 'all' ? 'var(--text)' : 'var(--surface)',
+          color: filter === 'all' ? '#fff' : 'var(--text-sub)',
+          cursor: 'pointer', transition: 'all .13s',
+        }}>
+          All projects
+          <span style={{ marginLeft: 5, opacity: 0.7, fontSize: 10.5, fontWeight: 700 }}>
+            {tasks.length}
+          </span>
+        </button>
+
+        {projects.map(p => {
+          const active = filter === p.name;
+          const count  = countByProject[p.name] || 0;
           return (
-            <button key={p} onClick={() => setFilter(p)} style={{
-              padding: '5px 13px', borderRadius: 99, fontSize: 12, fontWeight: active ? 600 : 500,
+            <button key={p.name} onClick={() => setFilter(p.name)} style={{
+              padding: '5px 13px', borderRadius: 99, fontSize: 12,
+              fontWeight: active ? 600 : 500,
               border: active ? 'none' : '1px solid var(--border)',
-              background: active ? (color || 'var(--text)') : 'var(--surface)',
+              background: active ? p.dot : 'var(--surface)',
               color: active ? '#fff' : 'var(--text-sub)',
               cursor: 'pointer', transition: 'all .13s',
+              opacity: count === 0 ? 0.45 : 1,
             }}>
-              {p === 'all' ? 'All projects' : p}
+              {p.name}
               <span style={{ marginLeft: 5, opacity: 0.75, fontSize: 10.5, fontWeight: 700 }}>
-                {p === 'all' ? tasks.length : tasks.filter(t => t.project === p).length}
+                {count}
               </span>
             </button>
           );
