@@ -189,7 +189,7 @@ function CompletedRow({ task, projectColorByName, onRestore, onDelete }) {
       <div style={{
         flex: 1, minWidth: 0,
         fontSize: 13, fontWeight: 500, color: 'var(--text-muted)',
-        textDecoration: 'line-through', wordBreak: 'break-word',
+        wordBreak: 'break-word',
         lineHeight: 1.35,
       }}>
         {task.title}
