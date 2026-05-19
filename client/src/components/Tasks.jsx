@@ -246,7 +246,7 @@ export default function Tasks() {
       )}
 
       {showModal && (
-        <TaskModal task={editing} onSave={saveTask}
+        <TaskModal task={editing} projects={projects} onSave={saveTask}
           onClose={() => { setShowModal(false); setEditing(null); }} />
       )}
     </div>
@@ -530,7 +530,7 @@ function TaskCard({ task, onEdit, onDelete, nextStatus, nextLabel, onStatusChang
   );
 }
 
-function TaskModal({ task, onSave, onClose }) {
+function TaskModal({ task, projects, onSave, onClose }) {
   const [form, setForm] = useState({
     title:       task?.title       || '',
     description: task?.description || '',
@@ -558,7 +558,7 @@ function TaskModal({ task, onSave, onClose }) {
           <label>Project</label>
           <select value={form.project} onChange={set('project')}>
             <option value="">— No project —</option>
-            {PROJECTS.map(p => <option key={p}>{p}</option>)}
+            {projects.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
           </select>
         </div>
         <div className="form-row">
