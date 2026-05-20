@@ -3,7 +3,7 @@ const path = require('path');
 
 const DB_FILE = path.join(__dirname, 'data.json');
 
-const SCHEMA = { tasks: [], events: [], work_hours: [], projects: [], activities: [] };
+const SCHEMA = { tasks: [], events: [], work_hours: [], projects: [], activities: [], messages: [] };
 
 const SEED_PROJECTS = [
   { id: 1, created_at: new Date().toISOString(), name: 'DirtLink',          dot: '#f97316', description: '', client: '', budget: '', status: 'active', website: '', notes: '' },
@@ -17,11 +17,12 @@ function load() {
   if (!fs.existsSync(DB_FILE)) {
     const seed = { ...SCHEMA, projects: SEED_PROJECTS };
     fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2));
-    return { ...seed, _counters: { tasks: 0, events: 0, work_hours: 0, projects: SEED_PROJECTS.length, activities: 0 } };
+    return { ...seed, _counters: { tasks: 0, events: 0, work_hours: 0, projects: SEED_PROJECTS.length, activities: 0, messages: 0 } };
   }
   const raw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   if (!raw.projects)   raw.projects   = SEED_PROJECTS;
   if (!raw.activities) raw.activities = [];
+  if (!raw.messages)   raw.messages   = [];
 
   let dirty = false;
   (raw.projects   || []).forEach(p => { if (p.name === 'Peneed')      { p.name = 'Penned';        dirty = true; } });
@@ -38,6 +39,7 @@ function load() {
       work_hours: raw.work_hours.length ? Math.max(...raw.work_hours.map(r => r.id)) : 0,
       projects:   raw.projects.length   ? Math.max(...raw.projects.map(r => r.id))   : 0,
       activities: raw.activities.length ? Math.max(...raw.activities.map(r => r.id)) : 0,
+      messages:   raw.messages.length   ? Math.max(...raw.messages.map(r => r.id))   : 0,
     },
   };
 }

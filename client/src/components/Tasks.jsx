@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 
-const TEAM     = ['Unassigned', 'Alex', 'Jonathan', 'Hubert'];
+const TEAM     = ['Unassigned', 'Alex', 'Jonathan', 'Hubert', 'Nicholas'];
 const STATUSES = ['todo', 'in-progress', 'done'];
 const ALL_STATUSES = ['todo', 'in-progress', 'done', 'archived'];
 const STATUS_LABELS = { todo: 'To Do', 'in-progress': 'In Progress', done: 'Done', archived: 'Archived' };
@@ -22,12 +22,18 @@ const ASSIGNEE_COLOR = {
   Alex:       '#d4789f', // dusty pink
   Jonathan:   '#3aa8be', // muted cyan
   Hubert:     '#8b6bbf', // soft violet
+  Nicholas:   '#4a9b8a', // muted teal
   Unassigned: '#94a3b8', // slate
 };
 
 const DOT_COLOR = { todo: '#9ca3af', 'in-progress': '#3b7ff5', done: '#16a34a' };
 
-const HUBERT_DOT = '#7e57c2';
+// Per-agent automated-work column config. `source` is the activity row tag the
+// integrations API attaches (lowercased agent name).
+const AGENTS = [
+  { id: 'hubert',   name: 'Hubert',   source: 'hubert',   dot: '#7e57c2' }, // violet
+  { id: 'nicholas', name: 'Nicholas', source: 'nicholas', dot: '#4a9b8a' }, // muted teal
+];
 
 // Sort: project order (DirtLink first), then priority desc, then id for stability.
 function sortTasks(tasks) {
@@ -84,6 +90,20 @@ export default function Tasks() {
   }
 
   const projectColorByName = Object.fromEntries(projects.map(p => [p.name, p.dot]));
+
+  // Split the automated-work feed per agent. Activities whose source matches
+  // a known agent flow into that agent's column; legacy rows without a
+  // recognized source fall back to Hubert (where they used to land).
+  const knownAgentSources = new Set(AGENTS.map(a => a.source));
+  const activitiesByAgent = AGENTS.reduce((acc, a) => {
+    acc[a.id] = activities.filter(act => {
+      const src = (act.source || '').toLowerCase();
+      if (src === a.source) return true;
+      if (a.id === 'hubert' && !knownAgentSources.has(src)) return true;
+      return false;
+    });
+    return acc;
+  }, {});
 
   async function saveTask(data) {
     if (editing) {
@@ -177,19 +197,21 @@ export default function Tasks() {
         /* Mobile: tab switcher + single scrollable column */
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: 14 }}>
 
-          {/* Tab bar — 4 tabs including Hubert */}
+          {/* Tab bar — 3 status tabs + one tab per agent */}
           <div style={{
             display: 'flex', gap: 0, marginBottom: 10,
             background: 'var(--surface2)', borderRadius: 10, padding: 3, flexShrink: 0,
+            overflowX: 'auto', scrollbarWidth: 'none',
           }}>
-            {[...STATUSES, 'hubert'].map(s => {
+            {[...STATUSES, ...AGENTS.map(a => a.id)].map(s => {
               const active = mobileTab === s;
-              const label = s === 'hubert' ? 'Hubert' : STATUS_LABELS[s];
-              const count = s === 'hubert' ? activities.length : byStatus[s].length;
-              const dotColor = s === 'hubert' ? HUBERT_DOT : DOT_COLOR[s];
+              const agent  = AGENTS.find(a => a.id === s);
+              const label  = agent ? agent.name : STATUS_LABELS[s];
+              const count  = agent ? activitiesByAgent[agent.id].length : byStatus[s].length;
+              const dotColor = agent ? agent.dot : DOT_COLOR[s];
               return (
                 <button key={s} onClick={() => setMobileTab(s)} style={{
-                  flex: 1, padding: '8px 2px', borderRadius: 8, border: 'none',
+                  flex: 1, minWidth: 78, padding: '8px 2px', borderRadius: 8, border: 'none',
                   background: active ? 'var(--surface)' : 'transparent',
                   fontWeight: active ? 600 : 400,
                   color: active ? 'var(--text)' : 'var(--text-muted)',
@@ -210,8 +232,13 @@ export default function Tasks() {
 
           {/* Scrollable list */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {mobileTab === 'hubert' ? (
-              <HubertColumn activities={activities} onDelete={deleteActivity} />
+            {AGENTS.find(a => a.id === mobileTab) ? (
+              <AgentColumn
+                agent={AGENTS.find(a => a.id === mobileTab)}
+                activities={activitiesByAgent[mobileTab]}
+                onDelete={deleteActivity}
+                flat
+              />
             ) : (
               <>
                 {byStatus[mobileTab].length === 0 && (
@@ -234,14 +261,20 @@ export default function Tasks() {
           </div>
         </div>
       ) : (
-        /* Desktop: 4-column kanban grid */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
+        /* Desktop: 3 status columns + one column per agent */
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${STATUSES.length + AGENTS.length}, 1fr)`,
+          gap: 16, flex: 1, minHeight: 0,
+        }}>
           {STATUSES.map(s => (
             <Column key={s} status={s} tasks={byStatus[s]} projectColorByName={projectColorByName}
               onEdit={openEdit} onDelete={deleteTask} onStatusChange={updateStatus}
               onArchive={s === 'done' ? archiveTask : null} />
           ))}
-          <HubertColumn activities={activities} onDelete={deleteActivity} />
+          {AGENTS.map(a => (
+            <AgentColumn key={a.id} agent={a} activities={activitiesByAgent[a.id]} onDelete={deleteActivity} />
+          ))}
         </div>
       )}
 
@@ -253,7 +286,7 @@ export default function Tasks() {
   );
 }
 
-function HubertColumn({ activities, onDelete, flat }) {
+function AgentColumn({ agent, activities, onDelete, flat }) {
   const content = (
     <>
       {activities.length === 0 ? (
@@ -261,10 +294,10 @@ function HubertColumn({ activities, onDelete, flat }) {
           textAlign: 'center', color: 'var(--text-muted)',
           fontSize: 12, padding: '28px 14px', lineHeight: 1.55, opacity: 0.85,
         }}>
-          No automated work logged yet. Hubert will post completed runs here as they happen.
+          No automated work logged yet. {agent.name} will post completed runs here as they happen.
         </div>
       ) : (
-        activities.map(a => <ActivityCard key={a.id} activity={a} onDelete={onDelete} />)
+        activities.map(a => <ActivityCard key={a.id} activity={a} fallbackColor={agent.dot} onDelete={onDelete} />)
       )}
     </>
   );
@@ -278,9 +311,9 @@ function HubertColumn({ activities, onDelete, flat }) {
         borderBottom: '1.5px solid var(--border-light)',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: HUBERT_DOT, flexShrink: 0 }} />
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: agent.dot, flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          Hubert
+          {agent.name}
         </span>
         <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
           automated
@@ -299,11 +332,11 @@ function HubertColumn({ activities, onDelete, flat }) {
   );
 }
 
-function ActivityCard({ activity: a, onDelete }) {
+function ActivityCard({ activity: a, fallbackColor, onDelete }) {
   const [hovered, setHovered] = useState(false);
   const ts = new Date(a.completed_at || a.created_at);
   const isFailed = a.status === 'failed';
-  const projectColor = a.project_color || HUBERT_DOT;
+  const projectColor = a.project_color || fallbackColor || '#7e57c2';
 
   return (
     <div

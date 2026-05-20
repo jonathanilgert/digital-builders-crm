@@ -31,14 +31,18 @@ Set these in the server's environment (PM2 ecosystem, systemd
 ```bash
 JWT_SECRET=<long random string, ≥16 chars>      # required for app login
 APP_PASSWORD=<shared workspace password>        # required for app login
-OPENCLAW_API_KEY=<long random string>           # required for integrations
+OPENCLAW_API_KEY=<long random string>           # Hubert's integration key
+NICHOLAS_API_KEY=<long random string>           # Nicholas's integration key
 ```
 
 - If `JWT_SECRET` or `APP_PASSWORD` is unset, every UI route returns
   `503 Auth disabled` — the app effectively goes offline. Keep these
   set. Rotating `JWT_SECRET` invalidates all existing sessions.
-- If `OPENCLAW_API_KEY` is unset, only `/api/integrations/*` returns
-  `503 Integration disabled`. The UI keeps working.
+- At least one of the agent keys (`OPENCLAW_API_KEY`, `NICHOLAS_API_KEY`)
+  must be set; otherwise `/api/integrations/*` returns
+  `503 Integration disabled`. Each key identifies a specific agent (Hubert
+  / Nicholas) — the server tags incoming requests with the agent name and
+  uses that to attribute activity rows and chat messages.
 
 `.env.example` is checked in as a template. The actual `.env` is not
 checked in.
@@ -66,14 +70,24 @@ jobs and Hubert don't need a browser session.
 
 ## Authentication
 
-Every integration request must carry the API key in **one** of:
+Every integration request must carry an agent API key in **one** of:
 
 ```
-Authorization: Bearer $OPENCLAW_API_KEY
-X-API-Key: $OPENCLAW_API_KEY
+Authorization: Bearer <agent key>
+X-API-Key: <agent key>
 ```
+
+Each agent has a distinct key:
+
+| Agent    | Env var            |
+| -------- | ------------------ |
+| Hubert   | `OPENCLAW_API_KEY` |
+| Nicholas | `NICHOLAS_API_KEY` |
 
 Tokens are compared in constant time. Missing/wrong tokens return `401`.
+The server records which key was used and uses it to attribute writes
+(activity `source`, default `claimed_by`, chat sender) — so a request
+with Nicholas's key cannot post messages as Hubert or vice versa.
 
 ## Rate limits
 
@@ -285,6 +299,34 @@ Same shape as `POST /api/tasks` (title, description, assignee, status,
 priority, due_date) plus `project` / `project_id`. No idempotency —
 every call creates a new task. Prefer the activity feed for automated
 work; the kanban is reserved for human-managed tasks.
+
+### `GET /api/integrations/messages`
+
+List recent team-chat messages. Same shape as the UI sees:
+
+```json
+[
+  { "id": 17, "sender": "Jonathan", "text": "Push the dirt scrape to staging first.", "created_at": "2026-05-19T14:02:11.812Z" }
+]
+```
+
+Query params: `since` (only return rows with `id > since`, useful for
+polling), `limit` (default 200, max 500).
+
+### `POST /api/integrations/messages`
+
+Post a message to the team chat as the agent identified by the API key.
+
+```json
+{ "text": "DirtLink scrape complete — 132 new permits." }
+```
+
+The server forces `sender` to the calling agent's name (Hubert or
+Nicholas). Any `sender` field in the body is ignored. The chat is the
+canonical channel for roadblocks and instruction tweaks — use it when
+something needs human acknowledgement, not the activity feed.
+
+Response: `201` with the created row.
 
 ### `GET /api/activities` (session-gated, used by the UI)
 

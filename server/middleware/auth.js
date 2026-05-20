@@ -14,19 +14,35 @@ function extractToken(req) {
   return null;
 }
 
+// Multi-agent: each agent has its own API key, but they get the same access surface.
+// Env-var name => display name surfaced as req.agent (used to tag activity rows etc.)
+const AGENT_KEYS = [
+  { env: 'OPENCLAW_API_KEY',  name: 'Hubert'   },
+  { env: 'NICHOLAS_API_KEY',  name: 'Nicholas' },
+];
+
+function configuredAgents() {
+  return AGENT_KEYS.filter(a => !!process.env[a.env]);
+}
+
 function requireApiKey(req, res, next) {
-  const expected = process.env.OPENCLAW_API_KEY;
-  if (!expected) {
+  const agents = configuredAgents();
+  if (agents.length === 0) {
     return res.status(503).json({
       error: 'Integration disabled',
-      detail: 'Server is missing OPENCLAW_API_KEY in its environment.',
+      detail: 'Server has no agent API keys configured (set OPENCLAW_API_KEY and/or NICHOLAS_API_KEY).',
     });
   }
   const provided = extractToken(req);
-  if (!provided || !timingSafeEqualStr(provided, expected)) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!provided) return res.status(401).json({ error: 'Unauthorized' });
+
+  for (const { env, name } of agents) {
+    if (timingSafeEqualStr(provided, process.env[env])) {
+      req.agent = name;
+      return next();
+    }
   }
-  next();
+  return res.status(401).json({ error: 'Unauthorized' });
 }
 
-module.exports = { requireApiKey };
+module.exports = { requireApiKey, AGENT_KEYS, configuredAgents };

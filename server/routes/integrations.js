@@ -89,6 +89,9 @@ router.post('/activities', (req, res) => {
     if (dup) return res.status(200).json({ created: false, activity: decorateActivity(dup) });
   }
 
+  // Default source to the calling agent (lowercased) so the UI can split the
+  // automated-work feed into per-agent columns. Caller can still override.
+  const defaultSource = req.agent ? req.agent.toLowerCase() : 'integration';
   const activity = db.insert('activities', {
     project_id:   project.id,
     project_name: project.name,
@@ -96,7 +99,7 @@ router.post('/activities', (req, res) => {
     title:        req.body.title.trim(),
     description:  req.body.description || null,
     status:       req.body.status || 'done',
-    source:       req.body.source || 'integration',
+    source:       req.body.source || defaultSource,
     color:        req.body.color || null,
     external_ref: externalRef,
     completed_at: req.body.completed_at || new Date().toISOString(),
@@ -155,7 +158,7 @@ router.post('/tasks/:id/claim', (req, res) => {
   if (!t) return res.status(404).json({ error: 'Not found' });
   if (t.status === 'done') return res.status(409).json({ error: 'Task already complete' });
 
-  const claimedBy = (req.body && req.body.claimed_by) || 'Hubert';
+  const claimedBy = (req.body && req.body.claimed_by) || req.agent || 'Hubert';
   if (t.claimed_by && t.claimed_by !== claimedBy) {
     return res.status(409).json({ error: 'Task already claimed', claimed_by: t.claimed_by, claimed_at: t.claimed_at });
   }
@@ -203,7 +206,7 @@ router.post('/tasks/:id/complete', (req, res) => {
       title:        summary || `Completed task: ${t.title}`,
       description:  details,
       status:       status,
-      source:       'hubert',
+      source:       (req.agent || 'hubert').toLowerCase(),
       color:        project ? project.dot : null,
       external_ref: externalRef,
       completed_at: completedAt,

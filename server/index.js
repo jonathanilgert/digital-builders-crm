@@ -16,13 +16,17 @@ app.use(cookieParser());
 
 app.use('/api/auth', require('./routes/auth'));
 
+const messages = require('./routes/messages');
+
 app.use('/api/tasks',      requireSession, require('./routes/tasks'));
 app.use('/api/events',     requireSession, require('./routes/events'));
 app.use('/api/hours',      requireSession, require('./routes/hours'));
 app.use('/api/projects',   requireSession, require('./routes/projects'));
 app.use('/api/activities', requireSession, require('./routes/activities'));
+app.use('/api/messages',   requireSession, messages.humanRouter);
 
-app.use('/api/integrations', rateLimit, requireApiKey, require('./routes/integrations'));
+app.use('/api/integrations/messages', rateLimit, requireApiKey, messages.agentRouter);
+app.use('/api/integrations',          rateLimit, requireApiKey, require('./routes/integrations'));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
