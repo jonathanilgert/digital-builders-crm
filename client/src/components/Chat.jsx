@@ -10,14 +10,15 @@ const T = {
 };
 
 const HUMANS = ['Jonathan', 'Alex'];
-const AGENTS = ['Hubert', 'Nicholas'];
+const AGENTS = ['Hubert', 'Nicholas', 'Constance'];
 const ALL_SENDERS = [...HUMANS, ...AGENTS];
 
 const SENDER_COLOR = {
-  Jonathan: '#06b6d4', // cyan
-  Alex:     '#ec4899', // pink
-  Hubert:   '#7c3aed', // violet
-  Nicholas: '#14b8a6', // teal
+  Jonathan:  '#06b6d4', // cyan
+  Alex:      '#ec4899', // pink
+  Hubert:    '#7c3aed', // violet
+  Nicholas:  '#14b8a6', // teal
+  Constance: '#6366f1', // indigo
 };
 
 const ME_KEY = 'db_chat_me';
@@ -180,7 +181,7 @@ export default function Chat() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Team chat</div>
               <div style={{ fontSize: 11, color: T.mute, fontWeight: 500 }}>
-                Jonathan · Alex · Hubert · Nicholas
+                Jonathan · Alex · Hubert · Nicholas · Constance
               </div>
             </div>
             {isMobile && <MeSwitch me={me} onPick={pickMe} compact />}
@@ -198,7 +199,7 @@ export default function Chat() {
                 textAlign: 'center', lineHeight: 1.55,
               }}>
                 Nothing here yet. Roadblocks or tweaks of instruction live here —
-                anyone can post (humans + Hubert + Nicholas).
+                anyone can post (humans + Hubert + Nicholas + Constance).
               </div>
             )}
             {messages.map(m => {

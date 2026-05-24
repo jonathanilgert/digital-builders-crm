@@ -33,16 +33,17 @@ JWT_SECRET=<long random string, ≥16 chars>      # required for app login
 APP_PASSWORD=<shared workspace password>        # required for app login
 OPENCLAW_API_KEY=<long random string>           # Hubert's integration key
 NICHOLAS_API_KEY=<long random string>           # Nicholas's integration key
+CONSTANCE_API_KEY=<long random string>          # Constance's integration key
 ```
 
 - If `JWT_SECRET` or `APP_PASSWORD` is unset, every UI route returns
   `503 Auth disabled` — the app effectively goes offline. Keep these
   set. Rotating `JWT_SECRET` invalidates all existing sessions.
-- At least one of the agent keys (`OPENCLAW_API_KEY`, `NICHOLAS_API_KEY`)
-  must be set; otherwise `/api/integrations/*` returns
+- At least one of the agent keys (`OPENCLAW_API_KEY`, `NICHOLAS_API_KEY`,
+  `CONSTANCE_API_KEY`) must be set; otherwise `/api/integrations/*` returns
   `503 Integration disabled`. Each key identifies a specific agent (Hubert
-  / Nicholas) — the server tags incoming requests with the agent name and
-  uses that to attribute activity rows and chat messages.
+  / Nicholas / Constance) — the server tags incoming requests with the
+  agent name and uses that to attribute activity rows and chat messages.
 
 `.env.example` is checked in as a template. The actual `.env` is not
 checked in.
@@ -79,10 +80,11 @@ X-API-Key: <agent key>
 
 Each agent has a distinct key:
 
-| Agent    | Env var            |
-| -------- | ------------------ |
-| Hubert   | `OPENCLAW_API_KEY` |
-| Nicholas | `NICHOLAS_API_KEY` |
+| Agent     | Env var             |
+| --------- | ------------------- |
+| Hubert    | `OPENCLAW_API_KEY`  |
+| Nicholas  | `NICHOLAS_API_KEY`  |
+| Constance | `CONSTANCE_API_KEY` |
 
 Tokens are compared in constant time. Missing/wrong tokens return `401`.
 The server records which key was used and uses it to attribute writes
@@ -321,8 +323,9 @@ Post a message to the team chat as the agent identified by the API key.
 { "text": "DirtLink scrape complete — 132 new permits." }
 ```
 
-The server forces `sender` to the calling agent's name (Hubert or
-Nicholas). Any `sender` field in the body is ignored. The chat is the
+The server forces `sender` to the calling agent's name (Hubert,
+Nicholas, or Constance). Any `sender` field in the body is ignored.
+The chat is the
 canonical channel for roadblocks and instruction tweaks — use it when
 something needs human acknowledgement, not the activity feed.
 

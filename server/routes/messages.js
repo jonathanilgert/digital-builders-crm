@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 
 const HUMAN_SENDERS = ['Jonathan', 'Alex'];
-const AGENT_SENDERS = ['Hubert', 'Nicholas'];
+const AGENT_SENDERS = ['Hubert', 'Nicholas', 'Constance'];
 const ALL_SENDERS   = [...HUMAN_SENDERS, ...AGENT_SENDERS];
 
 const MAX_TEXT = 4000;

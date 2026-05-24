@@ -17,8 +17,9 @@ function extractToken(req) {
 // Multi-agent: each agent has its own API key, but they get the same access surface.
 // Env-var name => display name surfaced as req.agent (used to tag activity rows etc.)
 const AGENT_KEYS = [
-  { env: 'OPENCLAW_API_KEY',  name: 'Hubert'   },
-  { env: 'NICHOLAS_API_KEY',  name: 'Nicholas' },
+  { env: 'OPENCLAW_API_KEY',  name: 'Hubert'    },
+  { env: 'NICHOLAS_API_KEY',  name: 'Nicholas'  },
+  { env: 'CONSTANCE_API_KEY', name: 'Constance' },
 ];
 
 function configuredAgents() {
@@ -30,7 +31,7 @@ function requireApiKey(req, res, next) {
   if (agents.length === 0) {
     return res.status(503).json({
       error: 'Integration disabled',
-      detail: 'Server has no agent API keys configured (set OPENCLAW_API_KEY and/or NICHOLAS_API_KEY).',
+      detail: 'Server has no agent API keys configured (set OPENCLAW_API_KEY, NICHOLAS_API_KEY, and/or CONSTANCE_API_KEY).',
     });
   }
   const provided = extractToken(req);

@@ -5,6 +5,8 @@ const ASSIGNEE_COLOR = {
   Alex:       '#ec4899',
   Jonathan:   '#06b6d4',
   Hubert:     '#7c3aed',
+  Nicholas:   '#14b8a6',
+  Constance:  '#6366f1',
   Unassigned: '#94a3b8',
 };
 
