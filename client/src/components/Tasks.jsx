@@ -122,6 +122,16 @@ export default function Tasks({ onOpenAgents }) {
 
   const openEdit = (t) => { setEditing(t); setShowModal(true); };
 
+  // Pill style for the assignee filter chips. Active chip glows in the
+  // member's own colour; inactive chips are quiet outlines.
+  const chipStyle = (active, color) => ({
+    fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 999,
+    border: `1.5px solid ${active ? color : 'var(--border)'}`,
+    background: active ? color + '22' : 'var(--surface)',
+    color: active ? color : 'var(--text-sub)',
+    cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap', lineHeight: 1.4,
+  });
+
   return (
     <div style={{
       padding: isMobile ? '14px 12px 0' : '28px 32px',
@@ -144,11 +154,6 @@ export default function Tasks({ onOpenAgents }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={filter.assignee} onChange={e => setFilter(f => ({ ...f, assignee: e.target.value }))}
-            style={{ width: 'auto', fontSize: 12, padding: '6px 10px', borderRadius: 8, color: 'var(--text-sub)' }}>
-            <option value="all">All members</option>
-            {assignees.map(m => <option key={m}>{m}</option>)}
-          </select>
           {!isMobile && (
             <select value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
               style={{ width: 'auto', fontSize: 12, padding: '6px 10px', borderRadius: 8, color: 'var(--text-sub)' }}>
@@ -175,6 +180,31 @@ export default function Tasks({ onOpenAgents }) {
             + New Task
           </button>
         </div>
+      </div>
+
+      {/* ── Assignee filter chips ── one tap to show only one person's tasks ── */}
+      <div style={{
+        display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
+        marginBottom: isMobile ? 12 : 18,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginRight: 2 }}>
+          Assignee
+        </span>
+        <button onClick={() => setFilter(f => ({ ...f, assignee: 'all' }))}
+          style={chipStyle(filter.assignee === 'all', '#6b7280')}>
+          All
+        </button>
+        {assignees.map(m => {
+          const color  = ASSIGNEE_COLOR[m] || '#6b7280';
+          const active = filter.assignee === m;
+          return (
+            <button key={m}
+              onClick={() => setFilter(f => ({ ...f, assignee: active ? 'all' : m }))}
+              style={chipStyle(active, color)}>
+              {m}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Kanban ── */}
