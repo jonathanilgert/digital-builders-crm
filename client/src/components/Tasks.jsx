@@ -112,6 +112,14 @@ export default function Tasks({ onOpenAgents }) {
 
   const done = tasks.filter(t => t.status === 'done').length;
 
+  // Filter dropdown options: every assignee that actually appears on a task,
+  // merged with the known TEAM, so people like Constance/Nicholas show up too.
+  // Unassigned always sorts last; everyone else alphabetical.
+  const assignees = Array.from(new Set([...TEAM, ...tasks.map(t => t.assignee).filter(Boolean)]))
+    .sort((a, b) =>
+      a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b)
+    );
+
   const openEdit = (t) => { setEditing(t); setShowModal(true); };
 
   return (
@@ -139,7 +147,7 @@ export default function Tasks({ onOpenAgents }) {
           <select value={filter.assignee} onChange={e => setFilter(f => ({ ...f, assignee: e.target.value }))}
             style={{ width: 'auto', fontSize: 12, padding: '6px 10px', borderRadius: 8, color: 'var(--text-sub)' }}>
             <option value="all">All members</option>
-            {TEAM.map(m => <option key={m}>{m}</option>)}
+            {assignees.map(m => <option key={m}>{m}</option>)}
           </select>
           {!isMobile && (
             <select value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
